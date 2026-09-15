@@ -12,20 +12,20 @@
     />
     <style>
       :root {
-        /* Dark Theme (淡く透き通るようなスモーキーローズ) */
-        --md-sys-color-surface: #161214;
-        --md-sys-color-surface-container: #201a1c;
-        --md-sys-color-surface-container-high: #2b2226;
-        --md-sys-color-on-surface: #f7ebee;
-        --md-sys-color-on-surface-variant: #dac2c7;
-        --md-sys-color-outline: #8c787d;
-        --md-sys-color-primary: #f5b7cb;
-        --md-sys-color-on-primary: #4e1a2f;
-        --md-sys-color-secondary-container: #423036;
-        --md-sys-color-on-secondary-container: #fadee5;
+        /* Dark Theme (深みのあるチャコールに極淡いローズグレー) */
+        --md-sys-color-surface: #141113;
+        --md-sys-color-surface-container: #1b1719;
+        --md-sys-color-surface-container-high: #241f22;
+        --md-sys-color-on-surface: #f9eff1;
+        --md-sys-color-on-surface-variant: #d4c2c6;
+        --md-sys-color-outline: #7d6e72;
+        --md-sys-color-primary: #f8c3d3;
+        --md-sys-color-on-primary: #461b2a;
+        --md-sys-color-secondary-container: #36292d;
+        --md-sys-color-on-secondary-container: #f7dbe2;
         --md-sys-color-error: #ffb4ab;
         --md-sys-color-on-error: #690005;
-        --shadow-color: rgba(22, 18, 20, 0.4);
+        --shadow-color: rgba(20, 17, 19, 0.4);
 
         --md-shape-corner-small: 8px;
         --md-shape-corner-medium: 16px;
@@ -35,20 +35,20 @@
 
       @media (prefers-color-scheme: light) {
         :root {
-          /* Light Theme (さらに淡く、白にほんのり桜色が透ける極淡ペールピンク) */
-          --md-sys-color-surface: #fffbfc;
-          --md-sys-color-surface-container: #fdf2f4;
-          --md-sys-color-surface-container-high: #fae8ec;
-          --md-sys-color-on-surface: #22181b;
-          --md-sys-color-on-surface-variant: #59474b;
-          --md-sys-color-outline: #9c878c;
-          --md-sys-color-primary: #9b4869;
+          /* Light Theme (白に近い透明感のあるサクラペール) */
+          --md-sys-color-surface: #fffdfd;
+          --md-sys-color-surface-container: #fdf7f8;
+          --md-sys-color-surface-container-high: #f9edf0;
+          --md-sys-color-on-surface: #221a1c;
+          --md-sys-color-on-surface-variant: #615054;
+          --md-sys-color-outline: #b09ca0;
+          --md-sys-color-primary: #9e4f6e;
           --md-sys-color-on-primary: #ffffff;
-          --md-sys-color-secondary-container: #f5dde3;
-          --md-sys-color-on-secondary-container: #3c1926;
+          --md-sys-color-secondary-container: #fae6eb;
+          --md-sys-color-on-secondary-container: #3d1b27;
           --md-sys-color-error: #ba1a1a;
           --md-sys-color-on-error: #ffffff;
-          --shadow-color: rgba(155, 72, 105, 0.05);
+          --shadow-color: rgba(158, 79, 110, 0.04);
         }
       }
 
@@ -112,21 +112,24 @@
 
       .controls-grid {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         width: 100%;
         max-width: 500px;
         justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
       }
 
       .md-text-field {
         flex: 1;
+        min-width: 160px;
         position: relative;
         background-color: var(--md-sys-color-surface-container-high);
         border-radius: var(--md-shape-corner-small);
         border-bottom: 2px solid var(--md-sys-color-outline);
         display: flex;
         align-items: center;
-        padding: 0 16px;
+        padding: 0 14px;
         height: 48px;
       }
 
@@ -138,7 +141,7 @@
         color: var(--md-sys-color-on-surface-variant);
         font-weight: 500;
         font-size: 16px;
-        margin-right: 6px;
+        margin-right: 4px;
         user-select: none;
       }
 
@@ -153,6 +156,10 @@
 
       .md-text-field input::placeholder {
         color: var(--md-sys-color-on-surface-variant);
+      }
+
+      #imageInput {
+        display: none;
       }
 
       .segmented-group {
@@ -288,9 +295,9 @@
 
       .btn {
         height: 44px;
-        padding: 0 20px;
+        padding: 0 16px;
         border-radius: var(--md-shape-corner-full);
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
         letter-spacing: 0.1px;
         cursor: pointer;
@@ -299,7 +306,7 @@
         align-items: center;
         justify-content: center;
         user-select: none;
-        gap: 8px;
+        gap: 6px;
         white-space: nowrap;
       }
 
@@ -322,7 +329,6 @@
         filter: brightness(0.96);
       }
 
-      /* 正円アイコンボタン */
       .btn-icon-circle {
         width: 52px;
         height: 52px;
@@ -562,7 +568,26 @@
               placeholder="X IDを入力 (未入力OK)"
             />
           </div>
-          <button class="btn btn-secondary" id="loadBtn">アイコン取得</button>
+          <button class="btn btn-secondary" id="loadBtn">
+            IDからアイコン取得
+          </button>
+
+          <label
+            class="btn btn-secondary"
+            for="imageInput"
+            title="端末からアイコン画像を直接選択"
+          >
+            <svg
+              style="width: 16px; height: 16px; fill: currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+              />
+            </svg>
+            画像
+          </label>
+          <input type="file" id="imageInput" accept="image/*" />
         </div>
 
         <div class="settings-panel">
@@ -682,9 +707,7 @@
         <div class="progress-bar-fill" id="progressBarFill"></div>
       </div>
 
-      <!-- ミニマルな正円アイコンボタン -->
       <div class="action-row">
-        <!-- プレビュー再生/停止 (三角 / 四角) -->
         <button
           class="btn btn-secondary btn-icon-circle"
           id="playBtn"
@@ -698,7 +721,6 @@
           </svg>
         </button>
 
-        <!-- 動画書き出し (ダウンロードトレイアイコン) -->
         <button
           class="btn btn-primary btn-icon-circle"
           id="recordBtn"
@@ -980,6 +1002,17 @@
 
         iconImg.src = `https://unavatar.io/x/${cleanUser}`;
       }
+
+      document.getElementById("imageInput").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          iconImg.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
 
       iconImg.onload = () => {
         hasLoadedIcon = true;
@@ -1309,10 +1342,11 @@
 
         const padding = fontSize * 1.5;
 
+        // 左下：公開URLに固定
         targetCtx.textAlign = "left";
         targetCtx.textBaseline = "bottom";
-        const siteDisplay = window.location.hostname || "VoicePostGenerator";
-        targetCtx.fillText(siteDisplay, padding, height - padding);
+        const siteUrl = "cure88200.github.io/VoicePostGenerator";
+        targetCtx.fillText(siteUrl, padding, height - padding);
 
         if (username) {
           targetCtx.textAlign = "right";
