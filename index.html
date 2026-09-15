@@ -1,0 +1,1485 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoicePostGenerator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Dark Theme (淡く透き通るようなスモーキーローズ) */
+        --md-sys-color-surface: #161214;
+        --md-sys-color-surface-container: #201a1c;
+        --md-sys-color-surface-container-high: #2b2226;
+        --md-sys-color-on-surface: #f7ebee;
+        --md-sys-color-on-surface-variant: #dac2c7;
+        --md-sys-color-outline: #8c787d;
+        --md-sys-color-primary: #f5b7cb;
+        --md-sys-color-on-primary: #4e1a2f;
+        --md-sys-color-secondary-container: #423036;
+        --md-sys-color-on-secondary-container: #fadee5;
+        --md-sys-color-error: #ffb4ab;
+        --md-sys-color-on-error: #690005;
+        --shadow-color: rgba(22, 18, 20, 0.4);
+
+        --md-shape-corner-small: 8px;
+        --md-shape-corner-medium: 16px;
+        --md-shape-corner-large: 28px;
+        --md-shape-corner-full: 9999px;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          /* Light Theme (さらに淡く、白にほんのり桜色が透ける極淡ペールピンク) */
+          --md-sys-color-surface: #fffbfc;
+          --md-sys-color-surface-container: #fdf2f4;
+          --md-sys-color-surface-container-high: #fae8ec;
+          --md-sys-color-on-surface: #22181b;
+          --md-sys-color-on-surface-variant: #59474b;
+          --md-sys-color-outline: #9c878c;
+          --md-sys-color-primary: #9b4869;
+          --md-sys-color-on-primary: #ffffff;
+          --md-sys-color-secondary-container: #f5dde3;
+          --md-sys-color-on-secondary-container: #3c1926;
+          --md-sys-color-error: #ba1a1a;
+          --md-sys-color-on-error: #ffffff;
+          --shadow-color: rgba(155, 72, 105, 0.05);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        transition:
+          background-color 0.25s ease,
+          color 0.25s ease,
+          border-color 0.25s ease;
+      }
+
+      body {
+        background-color: var(--md-sys-color-surface);
+        color: var(--md-sys-color-on-surface);
+        font-family: "Roboto", sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+
+      .app-container {
+        background-color: var(--md-sys-color-surface-container);
+        border-radius: var(--md-shape-corner-large);
+        padding: 32px;
+        max-width: 680px;
+        width: 100%;
+        box-shadow: 0 10px 30px var(--shadow-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 500;
+        letter-spacing: 0.15px;
+        color: var(--md-sys-color-on-surface);
+        text-align: center;
+      }
+
+      .controls-wrapper {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        transition: opacity 0.2s ease;
+      }
+
+      .controls-wrapper.locked {
+        pointer-events: none;
+        opacity: 0.45;
+      }
+
+      .controls-grid {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+        max-width: 500px;
+        justify-content: center;
+      }
+
+      .md-text-field {
+        flex: 1;
+        position: relative;
+        background-color: var(--md-sys-color-surface-container-high);
+        border-radius: var(--md-shape-corner-small);
+        border-bottom: 2px solid var(--md-sys-color-outline);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        height: 48px;
+      }
+
+      .md-text-field:focus-within {
+        border-bottom-color: var(--md-sys-color-primary);
+      }
+
+      .md-text-field .prefix {
+        color: var(--md-sys-color-on-surface-variant);
+        font-weight: 500;
+        font-size: 16px;
+        margin-right: 6px;
+        user-select: none;
+      }
+
+      .md-text-field input {
+        background: transparent;
+        border: none;
+        color: var(--md-sys-color-on-surface);
+        font-size: 15px;
+        width: 100%;
+        outline: none;
+      }
+
+      .md-text-field input::placeholder {
+        color: var(--md-sys-color-on-surface-variant);
+      }
+
+      .segmented-group {
+        display: inline-flex;
+        background-color: var(--md-sys-color-surface-container-high);
+        border-radius: var(--md-shape-corner-full);
+        padding: 4px;
+        border: 1px solid var(--md-sys-color-outline);
+        align-items: center;
+      }
+
+      .segmented-btn {
+        padding: 6px 14px;
+        border-radius: var(--md-shape-corner-full);
+        border: none;
+        background: transparent;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+      }
+
+      .segmented-btn.active {
+        background-color: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+
+      .settings-panel {
+        width: 100%;
+        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background-color: var(--md-sys-color-surface-container-high);
+        padding: 16px;
+        border-radius: var(--md-shape-corner-medium);
+        align-items: center;
+      }
+
+      .settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .settings-label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--md-sys-color-on-surface-variant);
+      }
+
+      .color-palette-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .color-swatch {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--md-shape-corner-full);
+        border: 2px solid transparent;
+        cursor: pointer;
+        outline: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition:
+          transform 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .color-swatch:hover {
+        transform: scale(1.1);
+      }
+
+      .color-swatch.active {
+        border-color: #fff;
+        box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+        transform: scale(1.15);
+      }
+
+      .color-picker-wrapper {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        border-radius: var(--md-shape-corner-full);
+        cursor: pointer;
+        border: 2px solid var(--md-sys-color-outline);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition:
+          transform 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .color-picker-wrapper:hover {
+        transform: scale(1.1);
+      }
+
+      .color-picker-wrapper.active {
+        border-color: #fff;
+        box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+        transform: scale(1.15);
+      }
+
+      .color-picker-wrapper svg {
+        width: 16px;
+        height: 16px;
+        pointer-events: none;
+        z-index: 2;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+      }
+
+      .color-picker-wrapper input[type="color"] {
+        position: absolute;
+        top: -10px;
+        left: -10px;
+        width: 60px;
+        height: 60px;
+        cursor: pointer;
+        border: none;
+        background: none;
+        opacity: 0;
+        z-index: 1;
+      }
+
+      .btn {
+        height: 44px;
+        padding: 0 20px;
+        border-radius: var(--md-shape-corner-full);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.1px;
+        cursor: pointer;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        gap: 8px;
+        white-space: nowrap;
+      }
+
+      .btn-primary {
+        background-color: var(--md-sys-color-primary);
+        color: var(--md-sys-color-on-primary);
+      }
+
+      .btn-primary:hover {
+        box-shadow: 0 2px 6px var(--shadow-color);
+        filter: brightness(1.05);
+      }
+
+      .btn-secondary {
+        background-color: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+
+      .btn-secondary:hover {
+        filter: brightness(0.96);
+      }
+
+      /* 正円アイコンボタン */
+      .btn-icon-circle {
+        width: 52px;
+        height: 52px;
+        padding: 0;
+        border-radius: var(--md-shape-corner-full);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn-icon-circle svg {
+        width: 22px;
+        height: 22px;
+        fill: currentColor;
+      }
+
+      .btn-record-mic {
+        background-color: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        border: none;
+        flex: 1;
+      }
+
+      .btn-record-mic.recording {
+        background-color: var(--md-sys-color-error);
+        color: var(--md-sys-color-on-error);
+        animation: pulse 1.5s infinite;
+      }
+
+      .rec-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #ff5277;
+        display: inline-block;
+      }
+
+      .btn-record-mic.recording .rec-dot {
+        background-color: #ffffff;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.75;
+          transform: scale(0.98);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .btn:disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+        box-shadow: none;
+        filter: none;
+        pointer-events: none;
+      }
+
+      .audio-input-buttons {
+        width: 100%;
+        max-width: 500px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .file-input-label {
+        cursor: pointer;
+        flex: 1;
+      }
+
+      #audioInput {
+        display: none;
+      }
+
+      .audio-status-card {
+        width: 100%;
+        max-width: 500px;
+        background-color: var(--md-sys-color-surface-container-high);
+        border-radius: var(--md-shape-corner-medium);
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        box-sizing: border-box;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .audio-status-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        overflow: hidden;
+      }
+
+      .audio-type-badge {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 4px 10px;
+        border-radius: var(--md-shape-corner-full);
+        background-color: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        white-space: nowrap;
+      }
+
+      .audio-info-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: hidden;
+      }
+
+      .audio-name-display {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--md-sys-color-on-surface);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .audio-duration-display {
+        font-size: 11px;
+        color: var(--md-sys-color-on-surface-variant);
+      }
+
+      .mini-visualizer {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 20px;
+      }
+
+      .mini-bar {
+        width: 3px;
+        height: 6px;
+        background-color: var(--md-sys-color-outline);
+        border-radius: 1.5px;
+        transition:
+          height 0.08s ease,
+          background-color 0.2s ease;
+      }
+
+      .mini-visualizer.active .mini-bar {
+        background-color: var(--md-sys-color-primary);
+      }
+
+      .canvas-container {
+        width: 100%;
+        max-width: 500px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 280px;
+      }
+
+      canvas {
+        max-width: 100%;
+        max-height: 440px;
+        border-radius: var(--md-shape-corner-medium);
+        background-color: #000;
+        box-shadow: 0 4px 16px var(--shadow-color);
+        transition: aspect-ratio 0.2s ease;
+      }
+
+      .action-row {
+        display: flex;
+        gap: 20px;
+        width: 100%;
+        max-width: 500px;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .progress-bar-container {
+        width: 100%;
+        max-width: 500px;
+        height: 6px;
+        background: var(--md-sys-color-surface-container-high);
+        border-radius: 3px;
+        overflow: hidden;
+        display: none;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--md-sys-color-primary);
+        transition: width 0.1s linear;
+      }
+
+      footer {
+        margin-top: 24px;
+        font-size: 12px;
+        color: var(--md-sys-color-outline);
+        letter-spacing: 0.25px;
+        text-align: center;
+        opacity: 0.85;
+      }
+
+      footer a {
+        color: var(--md-sys-color-outline);
+        text-decoration: none;
+        font-weight: 500;
+        transition:
+          color 0.2s ease,
+          opacity 0.2s ease;
+      }
+
+      footer a:hover {
+        color: var(--md-sys-color-on-surface);
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <h1>VoicePostGenerator</h1>
+
+      <div class="controls-wrapper" id="controlsWrapper">
+        <div class="controls-grid">
+          <div class="md-text-field">
+            <span class="prefix">@</span>
+            <input
+              type="text"
+              id="usernameInput"
+              placeholder="X IDを入力 (未入力OK)"
+            />
+          </div>
+          <button class="btn btn-secondary" id="loadBtn">アイコン取得</button>
+        </div>
+
+        <div class="settings-panel">
+          <div class="settings-row">
+            <span class="settings-label">アスペクト比</span>
+            <div class="segmented-group">
+              <button
+                type="button"
+                class="segmented-btn active"
+                data-ratio="1:1"
+              >
+                1:1
+              </button>
+              <button type="button" class="segmented-btn" data-ratio="16:9">
+                16:9
+              </button>
+              <button type="button" class="segmented-btn" data-ratio="9:16">
+                9:16
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <span class="settings-label">動画テーマ</span>
+            <div class="segmented-group">
+              <button type="button" class="segmented-btn" id="videoThemeLight">
+                Light
+              </button>
+              <button type="button" class="segmented-btn" id="videoThemeDark">
+                Dark
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <span class="settings-label">カラーパレット</span>
+            <div class="color-palette-group">
+              <button
+                class="color-swatch active"
+                id="swatch0"
+                title="パレットカラー 1"
+              ></button>
+              <button
+                class="color-swatch"
+                id="swatch1"
+                title="パレットカラー 2"
+              ></button>
+              <button
+                class="color-swatch"
+                id="swatch2"
+                title="パレットカラー 3"
+              ></button>
+              <div
+                class="color-picker-wrapper"
+                id="customPickerWrapper"
+                title="カスタムカラーを編集"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#ffffff"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 20h9"></path>
+                  <path
+                    d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+                  ></path>
+                </svg>
+                <input type="color" id="customColorPicker" value="#ea7a99" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="audio-input-buttons">
+          <button class="btn btn-record-mic" id="micRecordBtn">
+            <span class="rec-dot"></span>
+            <span id="micRecordText">マイクで録音</span>
+          </button>
+
+          <label class="btn btn-secondary file-input-label" for="audioInput">
+            ファイルを選択
+          </label>
+          <input type="file" id="audioInput" accept="audio/*" />
+        </div>
+
+        <div class="audio-status-card" id="audioStatusCard">
+          <div class="audio-status-left">
+            <span class="audio-type-badge" id="audioTypeBadge">NO AUDIO</span>
+            <div class="audio-info-text">
+              <span class="audio-name-display" id="audioNameDisplay"
+                >音声が読み込まれていません</span
+              >
+              <span class="audio-duration-display" id="audioDurationDisplay"
+                >00:00</span
+              >
+            </div>
+          </div>
+
+          <div class="mini-visualizer" id="miniVisualizer">
+            <div class="mini-bar"></div>
+            <div class="mini-bar"></div>
+            <div class="mini-bar"></div>
+            <div class="mini-bar"></div>
+            <div class="mini-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="canvas" width="600" height="600"></canvas>
+      </div>
+
+      <div class="progress-bar-container" id="progressBarContainer">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+
+      <!-- ミニマルな正円アイコンボタン -->
+      <div class="action-row">
+        <!-- プレビュー再生/停止 (三角 / 四角) -->
+        <button
+          class="btn btn-secondary btn-icon-circle"
+          id="playBtn"
+          title="プレビュー再生 / 停止"
+        >
+          <svg id="playIcon" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+          <svg id="stopIcon" viewBox="0 0 24 24" style="display: none">
+            <path d="M6 6h12v12H6z" />
+          </svg>
+        </button>
+
+        <!-- 動画書き出し (ダウンロードトレイアイコン) -->
+        <button
+          class="btn btn-primary btn-icon-circle"
+          id="recordBtn"
+          title="動画を書き出す (MP4)"
+        >
+          <svg viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <footer>
+      Created by
+      <a href="https://x.com/cure88200" target="_blank" rel="noopener"
+        >cure88200</a
+      >
+      with Gemini
+    </footer>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      const controlsWrapper = document.getElementById("controlsWrapper");
+      const progressBarContainer = document.getElementById(
+        "progressBarContainer",
+      );
+      const progressBarFill = document.getElementById("progressBarFill");
+
+      const playBtn = document.getElementById("playBtn");
+      const playIcon = document.getElementById("playIcon");
+      const stopIcon = document.getElementById("stopIcon");
+      const recordBtn = document.getElementById("recordBtn");
+      const usernameInput = document.getElementById("usernameInput");
+
+      const customPickerWrapper = document.getElementById(
+        "customPickerWrapper",
+      );
+      const customPicker = document.getElementById("customColorPicker");
+
+      const audioTypeBadge = document.getElementById("audioTypeBadge");
+      const audioNameDisplay = document.getElementById("audioNameDisplay");
+      const audioDurationDisplay = document.getElementById(
+        "audioDurationDisplay",
+      );
+      const miniVisualizer = document.getElementById("miniVisualizer");
+      const miniBars = miniVisualizer.querySelectorAll(".mini-bar");
+
+      let audioCtx, analyser, audioBuffer;
+      let isPlaying = false;
+      let currentSourceNode = null;
+      let isExporting = false;
+
+      let micRecorder = null;
+      let micChunks = [];
+      let isMicRecording = false;
+      let micStream = null;
+      let micSourceNode = null;
+
+      let iconImg = new Image();
+      iconImg.crossOrigin = "anonymous";
+      let hasLoadedIcon = false;
+      let currentUsername = "";
+
+      const defaultColors = [
+        { r: 234, g: 122, b: 153 }, // Soft Rose
+        { r: 128, g: 153, b: 235 }, // Lavender Blue
+        { r: 110, g: 182, b: 161 }, // Sage Green
+      ];
+
+      let extractedColors = [...defaultColors];
+      let selectedBaseColor = { ...extractedColors[0] };
+
+      const systemPrefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
+      let videoMode = systemPrefersDark ? "dark" : "light";
+      let currentAspectRatio = "1:1";
+
+      let computedBgColor = "#0f1419";
+      let computedEffectColor = { r: 234, g: 122, b: 153 };
+      let smoothedVolume = 0;
+
+      const lightBtn = document.getElementById("videoThemeLight");
+      const darkBtn = document.getElementById("videoThemeDark");
+
+      function syncThemeToggleUI() {
+        if (videoMode === "light") {
+          lightBtn.classList.add("active");
+          darkBtn.classList.remove("active");
+        } else {
+          darkBtn.classList.add("active");
+          lightBtn.classList.remove("active");
+        }
+      }
+      syncThemeToggleUI();
+
+      lightBtn.addEventListener("click", () => {
+        videoMode = "light";
+        syncThemeToggleUI();
+        updateComputedColors();
+      });
+
+      darkBtn.addEventListener("click", () => {
+        videoMode = "dark";
+        syncThemeToggleUI();
+        updateComputedColors();
+      });
+
+      const ratioButtons = document.querySelectorAll("[data-ratio]");
+      ratioButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          ratioButtons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          setAspectRatio(btn.dataset.ratio);
+        });
+      });
+
+      function setAspectRatio(ratio) {
+        currentAspectRatio = ratio;
+        if (ratio === "1:1") {
+          canvas.width = 600;
+          canvas.height = 600;
+        } else if (ratio === "16:9") {
+          canvas.width = 960;
+          canvas.height = 540;
+        } else if (ratio === "9:16") {
+          canvas.width = 540;
+          canvas.height = 960;
+        }
+      }
+
+      function formatTime(seconds) {
+        const m = Math.floor(seconds / 60)
+          .toString()
+          .padStart(2, "0");
+        const s = Math.floor(seconds % 60)
+          .toString()
+          .padStart(2, "0");
+        return `${m}:${s}`;
+      }
+
+      function updateAudioStatus(type, name, duration) {
+        if (type === "mic") {
+          audioTypeBadge.textContent = "MIC";
+        } else if (type === "file") {
+          audioTypeBadge.textContent = "FILE";
+        } else {
+          audioTypeBadge.textContent = "NO AUDIO";
+        }
+        audioNameDisplay.textContent = name;
+        audioDurationDisplay.textContent = duration
+          ? formatTime(duration)
+          : "00:00";
+      }
+
+      function rgbToHsl(r, g, b) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const max = Math.max(r, g, b),
+          min = Math.min(r, g, b);
+        let h,
+          s,
+          l = (max + min) / 2;
+
+        if (max === min) {
+          h = s = 0;
+        } else {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r:
+              h = (g - b) / d + (g < b ? 6 : 0);
+              break;
+            case g:
+              h = (b - r) / d + 2;
+              break;
+            case b:
+              h = (r - g) / d + 4;
+              break;
+          }
+          h /= 6;
+        }
+        return [h * 360, s, l];
+      }
+
+      function hslToRgb(h, s, l) {
+        h /= 360;
+        let r, g, b;
+        if (s === 0) {
+          r = g = b = l;
+        } else {
+          const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+          };
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+          const p = 2 * l - q;
+          r = hue2rgb(p, q, h + 1 / 3);
+          g = hue2rgb(p, q, h);
+          b = hue2rgb(p, q, h - 1 / 3);
+        }
+        return {
+          r: Math.round(r * 255),
+          g: Math.round(g * 255),
+          b: Math.round(b * 255),
+        };
+      }
+
+      function hexToRgb(hex) {
+        const bigint = parseInt(hex.slice(1), 16);
+        return {
+          r: (bigint >> 16) & 255,
+          g: (bigint >> 8) & 255,
+          b: bigint & 255,
+        };
+      }
+
+      function updateComputedColors() {
+        const [h, s, l] = rgbToHsl(
+          selectedBaseColor.r,
+          selectedBaseColor.g,
+          selectedBaseColor.b,
+        );
+
+        if (videoMode === "dark") {
+          if (s < 0.08) {
+            const bgL = Math.max(0.08, l * 0.25);
+            const bgRgb = hslToRgb(0, 0, bgL);
+            computedBgColor = `rgb(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b})`;
+            computedEffectColor = hslToRgb(0, 0, Math.min(0.9, l + 0.3));
+          } else {
+            const bgRgb = hslToRgb(h, Math.min(s * 0.85, 0.55), 0.16);
+            computedBgColor = `rgb(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b})`;
+            computedEffectColor = hslToRgb(h, Math.min(s * 1.15, 0.85), 0.72);
+          }
+        } else {
+          if (s < 0.08) {
+            const bgL = Math.min(0.94, 0.85 + l * 0.1);
+            const bgRgb = hslToRgb(0, 0, bgL);
+            computedBgColor = `rgb(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b})`;
+            computedEffectColor = hslToRgb(0, 0, Math.max(0.2, l * 0.5));
+          } else {
+            const bgRgb = hslToRgb(h, Math.min(s * 0.75, 0.45), 0.88);
+            computedBgColor = `rgb(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b})`;
+            computedEffectColor = hslToRgb(h, Math.min(s * 1.1, 0.8), 0.56);
+          }
+        }
+      }
+
+      function updateSwatches() {
+        for (let i = 0; i < 3; i++) {
+          const sw = document.getElementById(`swatch${i}`);
+          const c = extractedColors[i];
+          sw.style.backgroundColor = `rgb(${c.r}, ${c.g}, ${c.b})`;
+        }
+        selectedBaseColor = { ...extractedColors[0] };
+        setActiveSwatch(0);
+        updateComputedColors();
+      }
+
+      function loadIcon(username) {
+        const cleanUser = username.replace("@", "").trim();
+        currentUsername = cleanUser;
+
+        if (!cleanUser) {
+          hasLoadedIcon = false;
+          iconImg.src = "";
+          extractedColors = [...defaultColors];
+          updateSwatches();
+          return;
+        }
+
+        iconImg.src = `https://unavatar.io/x/${cleanUser}`;
+      }
+
+      iconImg.onload = () => {
+        hasLoadedIcon = true;
+        extractColorsFromIcon();
+      };
+
+      iconImg.onerror = () => {
+        hasLoadedIcon = false;
+        extractedColors = [...defaultColors];
+        updateSwatches();
+      };
+
+      function extractColorsFromIcon() {
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCanvas.width = 60;
+        tempCanvas.height = 60;
+        tempCtx.drawImage(iconImg, 0, 0, 60, 60);
+
+        const data = tempCtx.getImageData(0, 0, 60, 60).data;
+        const buckets = [[], [], []];
+
+        for (let i = 0; i < data.length; i += 16) {
+          const cr = data[i],
+            cg = data[i + 1],
+            cb = data[i + 2],
+            ca = data[i + 3];
+          if (ca > 140) {
+            const brightness = (cr * 299 + cg * 587 + cb * 114) / 1000;
+            if (brightness < 85) {
+              buckets[0].push({ r: cr, g: cg, b: cb });
+            } else if (brightness < 170) {
+              buckets[1].push({ r: cr, g: cg, b: cb });
+            } else {
+              buckets[2].push({ r: cr, g: cg, b: cb });
+            }
+          }
+        }
+
+        extractedColors = buckets.map((bucket, idx) => {
+          if (bucket.length === 0) {
+            return defaultColors[idx];
+          }
+          let sr = 0,
+            sg = 0,
+            sb = 0;
+          bucket.forEach((c) => {
+            sr += c.r;
+            sg += c.g;
+            sb += c.b;
+          });
+          return {
+            r: Math.round(sr / bucket.length),
+            g: Math.round(sg / bucket.length),
+            b: Math.round(sb / bucket.length),
+          };
+        });
+
+        for (let i = 0; i < 3; i++) {
+          const sw = document.getElementById(`swatch${i}`);
+          const c = extractedColors[i];
+          sw.style.backgroundColor = `rgb(${c.r}, ${c.g}, ${c.b})`;
+        }
+
+        selectedBaseColor = { ...(extractedColors[1] || extractedColors[0]) };
+        setActiveSwatch(extractedColors[1] ? 1 : 0);
+        updateComputedColors();
+      }
+
+      function setActiveSwatch(idx) {
+        document.querySelectorAll(".color-swatch").forEach((el, i) => {
+          el.classList.toggle("active", i === idx);
+        });
+        customPickerWrapper.classList.toggle("active", idx === -1);
+      }
+
+      for (let i = 0; i < 3; i++) {
+        document.getElementById(`swatch${i}`).addEventListener("click", () => {
+          selectedBaseColor = { ...extractedColors[i] };
+          setActiveSwatch(i);
+          updateComputedColors();
+        });
+      }
+
+      customPicker.addEventListener("input", (e) => {
+        const hex = e.target.value;
+        selectedBaseColor = hexToRgb(hex);
+        customPickerWrapper.style.backgroundColor = hex;
+        setActiveSwatch(-1);
+        updateComputedColors();
+      });
+
+      customPickerWrapper.style.backgroundColor = customPicker.value;
+
+      const micRecordBtn = document.getElementById("micRecordBtn");
+      const micRecordText = document.getElementById("micRecordText");
+
+      micRecordBtn.addEventListener("click", async () => {
+        if (isPlaying || isExporting) return;
+
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") await audioCtx.resume();
+
+        if (!isMicRecording) {
+          try {
+            micStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            micChunks = [];
+
+            if (!analyser) {
+              analyser = audioCtx.createAnalyser();
+              analyser.fftSize = 256;
+              analyser.smoothingTimeConstant = 0.45;
+            }
+            micSourceNode = audioCtx.createMediaStreamSource(micStream);
+            micSourceNode.connect(analyser);
+
+            micRecorder = new MediaRecorder(micStream);
+            micRecorder.ondataavailable = (e) => {
+              if (e.data.size > 0) micChunks.push(e.data);
+            };
+
+            const recordStartTime = Date.now();
+            updateAudioStatus("mic", "録音中...", 0);
+
+            micRecorder.onstop = async () => {
+              if (micSourceNode) {
+                micSourceNode.disconnect();
+                micSourceNode = null;
+              }
+
+              const micBlob = new Blob(micChunks, { type: "audio/webm" });
+              const arrayBuffer = await micBlob.arrayBuffer();
+              audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+              const recordDuration = (Date.now() - recordStartTime) / 1000;
+              updateAudioStatus(
+                "mic",
+                "マイク録音オーディオ",
+                audioBuffer.duration || recordDuration,
+              );
+
+              if (micStream) {
+                micStream.getTracks().forEach((track) => track.stop());
+                micStream = null;
+              }
+            };
+
+            micRecorder.start();
+            isMicRecording = true;
+            micRecordBtn.classList.add("recording");
+            micRecordText.textContent = "録音停止";
+            playBtn.disabled = true;
+            recordBtn.disabled = true;
+          } catch (err) {
+            alert("マイクへのアクセスが許可されていません: " + err.message);
+          }
+        } else {
+          micRecorder.stop();
+          isMicRecording = false;
+          micRecordBtn.classList.remove("recording");
+          micRecordText.textContent = "マイクで録音";
+          playBtn.disabled = false;
+          recordBtn.disabled = false;
+        }
+      });
+
+      document
+        .getElementById("audioInput")
+        .addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+
+          const arrayBuffer = await file.arrayBuffer();
+          audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+          updateAudioStatus("file", file.name, audioBuffer.duration);
+        });
+
+      playBtn.addEventListener("click", () => {
+        if (!audioBuffer)
+          return alert("音声ファイルを選択するか録音してください");
+        if (isExporting || isMicRecording) return;
+
+        if (audioCtx.state === "suspended") audioCtx.resume();
+
+        if (isPlaying) {
+          stopPreview();
+        } else {
+          playAudioPreview();
+        }
+      });
+
+      function stopPreview() {
+        if (currentSourceNode) {
+          currentSourceNode.stop();
+          currentSourceNode = null;
+        }
+        isPlaying = false;
+        playIcon.style.display = "block";
+        stopIcon.style.display = "none";
+        recordBtn.disabled = false;
+      }
+
+      function playAudioPreview() {
+        currentSourceNode = audioCtx.createBufferSource();
+        currentSourceNode.buffer = audioBuffer;
+
+        if (!analyser) {
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+        }
+        analyser.smoothingTimeConstant = 0.45;
+
+        currentSourceNode.connect(analyser);
+        analyser.connect(audioCtx.destination);
+
+        currentSourceNode.start(0);
+        isPlaying = true;
+        playIcon.style.display = "none";
+        stopIcon.style.display = "block";
+        recordBtn.disabled = true;
+
+        currentSourceNode.onended = () => {
+          stopPreview();
+        };
+      }
+
+      function getScaledBaseRadius(width, height, ratio) {
+        const minDim = Math.min(width, height);
+        if (ratio === "16:9") return minDim * 0.23;
+        if (ratio === "9:16") return minDim * 0.25;
+        return minDim * 0.165;
+      }
+
+      function renderFrame(
+        targetCtx,
+        width,
+        height,
+        ratio,
+        vol,
+        currentPhase,
+        bgColor,
+        effectColor,
+        isDark,
+        username,
+      ) {
+        targetCtx.fillStyle = bgColor;
+        targetCtx.fillRect(0, 0, width, height);
+
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const baseRadius = getScaledBaseRadius(width, height, ratio);
+
+        const circles = [
+          { dx: 1, dy: -1, phaseOffset: 0 },
+          { dx: -1, dy: -1, phaseOffset: Math.PI * 0.5 },
+          { dx: -1, dy: 1, phaseOffset: Math.PI },
+          { dx: 1, dy: 1, phaseOffset: Math.PI * 1.5 },
+        ];
+
+        circles.forEach((c) => {
+          const breath = Math.sin(currentPhase + c.phaseOffset);
+          const shiftMult = hasLoadedIcon ? 1.0 : 0.85;
+          const radiusMult = hasLoadedIcon ? 1.0 : 1.15;
+
+          const shiftDist =
+            (baseRadius * 0.16 +
+              breath * (baseRadius * 0.04) +
+              vol * (baseRadius * 0.28)) *
+            shiftMult;
+          const circleRadius =
+            (baseRadius * 0.8 + vol * (baseRadius * 0.24)) * radiusMult;
+
+          const circleX = centerX + c.dx * shiftDist;
+          const circleY = centerY + c.dy * shiftDist;
+
+          targetCtx.beginPath();
+          targetCtx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+
+          const baseAlpha = isDark ? 0.2 : 0.28;
+          const alpha = baseAlpha + vol * 0.22;
+          targetCtx.fillStyle = `rgba(${effectColor.r}, ${effectColor.g}, ${effectColor.b}, ${alpha})`;
+          targetCtx.fill();
+        });
+
+        if (hasLoadedIcon && iconImg.complete && iconImg.naturalWidth > 0) {
+          targetCtx.save();
+          targetCtx.beginPath();
+          targetCtx.arc(centerX, centerY, baseRadius, 0, Math.PI * 2);
+          targetCtx.closePath();
+          targetCtx.clip();
+
+          targetCtx.drawImage(
+            iconImg,
+            centerX - baseRadius,
+            centerY - baseRadius,
+            baseRadius * 2,
+            baseRadius * 2,
+          );
+          targetCtx.restore();
+
+          targetCtx.beginPath();
+          targetCtx.arc(centerX, centerY, baseRadius, 0, Math.PI * 2);
+          targetCtx.strokeStyle = isDark
+            ? "rgba(255, 255, 255, 0.35)"
+            : "rgba(0, 0, 0, 0.12)";
+          targetCtx.lineWidth = 2.5;
+          targetCtx.stroke();
+        }
+
+        const fontSize = Math.max(
+          12,
+          Math.round(Math.min(width, height) * 0.026),
+        );
+        targetCtx.font = `500 ${fontSize}px 'Roboto', sans-serif`;
+        targetCtx.fillStyle = isDark
+          ? "rgba(255, 255, 255, 0.45)"
+          : "rgba(0, 0, 0, 0.38)";
+
+        const padding = fontSize * 1.5;
+
+        targetCtx.textAlign = "left";
+        targetCtx.textBaseline = "bottom";
+        const siteDisplay = window.location.hostname || "VoicePostGenerator";
+        targetCtx.fillText(siteDisplay, padding, height - padding);
+
+        if (username) {
+          targetCtx.textAlign = "right";
+          targetCtx.fillText(`@${username}`, width - padding, height - padding);
+        }
+      }
+
+      function getOptimalMp4MimeType() {
+        const mp4Types = [
+          "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+          "video/mp4;codecs=avc1.4d401f,mp4a.40.2",
+          "video/mp4;codecs=avc1,mp4a.40.2",
+          "video/mp4",
+          "video/webm;codecs=vp9,opus",
+          "video/webm",
+        ];
+        for (const t of mp4Types) {
+          if (MediaRecorder.isTypeSupported(t)) return t;
+        }
+        return "";
+      }
+
+      recordBtn.addEventListener("click", async () => {
+        if (!audioBuffer)
+          return alert("音声ファイルを選択するか録音してください");
+        if (isPlaying || isExporting || isMicRecording) return;
+
+        if (audioCtx.state === "suspended") await audioCtx.resume();
+        startSynchronizedExport();
+      });
+
+      async function startSynchronizedExport() {
+        isExporting = true;
+        controlsWrapper.classList.add("locked");
+        progressBarContainer.style.display = "block";
+        progressBarFill.style.width = "0%";
+
+        recordBtn.disabled = true;
+        playBtn.disabled = true;
+
+        const streamFps = 60;
+        const canvasStream = canvas.captureStream(streamFps);
+        const audioDest = audioCtx.createMediaStreamDestination();
+
+        const exportSource = audioCtx.createBufferSource();
+        exportSource.buffer = audioBuffer;
+
+        const exportAnalyser = audioCtx.createAnalyser();
+        exportAnalyser.fftSize = 256;
+        exportAnalyser.smoothingTimeConstant = 0.45;
+
+        exportSource.connect(exportAnalyser);
+        exportAnalyser.connect(audioDest);
+        exportAnalyser.connect(audioCtx.destination);
+
+        const combinedStream = new MediaStream([
+          ...canvasStream.getVideoTracks(),
+          ...audioDest.stream.getAudioTracks(),
+        ]);
+
+        const mimeType = getOptimalMp4MimeType();
+        const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+        const recorder = new MediaRecorder(combinedStream, {
+          mimeType,
+          videoBitsPerSecond: 4000000,
+        });
+
+        const chunks = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: mimeType });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `voice_post_${Date.now()}.${ext}`;
+          a.click();
+          URL.revokeObjectURL(url);
+
+          controlsWrapper.classList.remove("locked");
+          progressBarContainer.style.display = "none";
+          isExporting = false;
+          recordBtn.disabled = false;
+          playBtn.disabled = false;
+        };
+
+        analyser = exportAnalyser;
+        isPlaying = true;
+
+        const duration = audioBuffer.duration;
+        const startTime = performance.now();
+
+        const progressInterval = setInterval(() => {
+          const elapsed = (performance.now() - startTime) / 1000;
+          const percent = Math.min(100, Math.round((elapsed / duration) * 100));
+          progressBarFill.style.width = `${percent}%`;
+        }, 100);
+
+        recorder.start();
+        exportSource.start(0);
+
+        exportSource.onended = () => {
+          clearInterval(progressInterval);
+          isPlaying = false;
+          setTimeout(() => {
+            recorder.stop();
+          }, 350);
+        };
+      }
+
+      document.getElementById("loadBtn").addEventListener("click", () => {
+        loadIcon(usernameInput.value);
+      });
+
+      loadIcon("");
+
+      let previewPhase = 0;
+      function previewLoop() {
+        requestAnimationFrame(previewLoop);
+
+        let targetVolume = 0;
+        if ((isPlaying || isMicRecording) && analyser) {
+          const freqData = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(freqData);
+          let sum = 0;
+          for (let i = 0; i < freqData.length; i++) {
+            sum += freqData[i];
+          }
+          targetVolume = sum / freqData.length / 255;
+        }
+
+        smoothedVolume += (targetVolume - smoothedVolume) * 0.65;
+        previewPhase += 0.035;
+
+        if (isPlaying || isMicRecording) {
+          miniVisualizer.classList.add("active");
+          miniBars.forEach((bar, idx) => {
+            const barHeight = Math.max(
+              4,
+              Math.min(20, smoothedVolume * 45 * (0.6 + (idx % 3) * 0.3)),
+            );
+            bar.style.height = `${barHeight}px`;
+          });
+        } else {
+          miniVisualizer.classList.remove("active");
+          miniBars.forEach((bar) => {
+            bar.style.height = "6px";
+          });
+        }
+
+        renderFrame(
+          ctx,
+          canvas.width,
+          canvas.height,
+          currentAspectRatio,
+          smoothedVolume,
+          previewPhase,
+          computedBgColor,
+          computedEffectColor,
+          videoMode === "dark",
+          currentUsername,
+        );
+      }
+
+      previewLoop();
+    </script>
+  </body>
+</html>
