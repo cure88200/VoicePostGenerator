@@ -830,7 +830,7 @@
         <!-- オプション設定 -->
         <details class="options-details" id="optionsDetails">
           <summary class="options-summary">
-            <span>オプション設定 (キャプション・フレームレートなど)</span>
+            <span>オプション設定 (キャプション・テーマなど)</span>
             <svg viewBox="0 0 24 24">
               <path
                 d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
@@ -864,29 +864,6 @@
                 </button>
                 <button type="button" class="segmented-btn" data-ratio="9:16">
                   9:16
-                </button>
-              </div>
-            </div>
-
-            <!-- フレームレート選択 (FPS) -->
-            <div class="settings-row">
-              <span class="settings-label">フレームレート</span>
-              <div class="segmented-group">
-                <button
-                  type="button"
-                  class="segmented-btn active"
-                  data-fps="30"
-                  title="高画質・𝕏推奨 (30fps)"
-                >
-                  30fps
-                </button>
-                <button
-                  type="button"
-                  class="segmented-btn"
-                  data-fps="60"
-                  title="滑らか重視 (60fps)"
-                >
-                  60fps
                 </button>
               </div>
             </div>
@@ -1191,8 +1168,8 @@
       let previewBgRecorder = null;
       let previewBgChunks = [];
 
-      // フレームレート設定 (デフォルト: 高画質・低圧縮ノイズな30fps)
-      let currentFps = 30;
+      // フレームレートは 60fps 完全固定
+      const FIXED_FPS = 60;
 
       function invalidateCache() {
         cachedVideoBlob = null;
@@ -1281,7 +1258,6 @@
           customIconBase64: customIconBase64,
           caption: captionInput.value,
           aspectRatio: currentAspectRatio,
-          fps: currentFps,
           videoMode: videoMode,
           layoutStyle: currentLayoutStyle,
           isRadioEffect: isRadioEffect,
@@ -1323,15 +1299,6 @@
               btn.classList.toggle(
                 "active",
                 btn.dataset.ratio === prefs.aspectRatio,
-              );
-            });
-          }
-          if (prefs.fps) {
-            currentFps = parseInt(prefs.fps, 10);
-            document.querySelectorAll("[data-fps]").forEach((btn) => {
-              btn.classList.toggle(
-                "active",
-                parseInt(btn.dataset.fps, 10) === currentFps,
               );
             });
           }
@@ -1418,18 +1385,6 @@
         });
       });
 
-      // フレームレート選択 (30fps / 60fps)
-      const fpsButtons = document.querySelectorAll("[data-fps]");
-      fpsButtons.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          fpsButtons.forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          currentFps = parseInt(btn.dataset.fps, 10);
-          invalidateCache();
-          savePreferences();
-        });
-      });
-
       const cleanBtn = document.getElementById("audioEffectClean");
       const radioBtn = document.getElementById("audioEffectRadio");
 
@@ -1479,7 +1434,6 @@
         });
       });
 
-      // 高精細フルHD基準（1080p）の内部解像度を設定
       function setAspectRatio(ratio) {
         currentAspectRatio = ratio;
         if (ratio === "1:1") {
@@ -2162,7 +2116,7 @@
         }
       });
 
-      // プレビュー再生（選択されたFPSでリアルタイムキャプチャ）
+      // プレビュー再生（60fps固定）
       function playAudioPreview() {
         currentSourceNode = audioCtx.createBufferSource();
         currentSourceNode.buffer = audioBuffer;
@@ -2184,7 +2138,7 @@
 
         attachRadioEffects(currentSourceNode, previewGain, audioCtx);
 
-        const canvasStream = canvas.captureStream(currentFps);
+        const canvasStream = canvas.captureStream(FIXED_FPS);
         const combinedStream = new MediaStream([
           ...canvasStream.getVideoTracks(),
           ...audioDest.stream.getAudioTracks(),
@@ -2194,7 +2148,7 @@
         previewBgChunks = [];
         previewBgRecorder = new MediaRecorder(combinedStream, {
           mimeType,
-          videoBitsPerSecond: 12000000, // 12Mbps 高画質キャッシュ
+          videoBitsPerSecond: 12000000,
         });
 
         previewBgRecorder.ondataavailable = (e) => {
@@ -2266,7 +2220,7 @@
         return minDim * 0.165;
       }
 
-      // レンダリング関数：フレーム描画前に必ず clearRect を呼び出してゴミ残りを完全根絶
+      // レンダリング関数：案4ハイブリッド適用 ＆ Classic新配置（左上キャプション・左下ID・右下極小URL）
       function renderFrame(
         targetCtx,
         width,
@@ -2281,7 +2235,7 @@
         caption,
         layoutStyle,
       ) {
-        targetCtx.clearRect(0, 0, width, height); // 前フレームの残骸を完全消去！
+        targetCtx.clearRect(0, 0, width, height);
         targetCtx.fillStyle = bgColor;
         targetCtx.fillRect(0, 0, width, height);
 
@@ -2361,55 +2315,60 @@
         const minDim = Math.min(width, height);
         const siteUrl = "cure88200.github.io/VoicePostGenerator";
 
+        // 共通タイポグラフィ定義（案4ハイブリッド）
+        const baseFontSize = Math.max(12, Math.round(minDim * 0.026));
+        const urlFontSize = Math.max(10, Math.round(baseFontSize * 0.84)); // URLは84%に縮小
+        const captionFontSize = Math.max(16, Math.round(minDim * 0.042));
+        const padding = baseFontSize * 1.6;
+
+        // 濃度設計
+        const captionColor = isDark
+          ? "rgba(255, 255, 255, 0.88)"
+          : "rgba(20, 20, 22, 0.88)";
+        const idColor = isDark
+          ? "rgba(255, 255, 255, 0.75)"
+          : "rgba(20, 20, 22, 0.75)"; // 0.75でしっかり立つ
+        const urlColor = isDark
+          ? "rgba(255, 255, 255, 0.28)"
+          : "rgba(0, 0, 0, 0.24)"; // 0.28で上品な透かし
+
         if (layoutStyle === "classic") {
+          // Classic新配置：左上キャプション、左下@ID、右下URL
           if (caption && caption.trim()) {
-            const topSpaceCenterY = (centerY - baseRadius) / 2 + 10;
-            const captionFontSize = Math.max(16, Math.round(minDim * 0.042));
             targetCtx.font = `500 ${captionFontSize}px 'Roboto', sans-serif`;
-            targetCtx.textAlign = "center";
-            targetCtx.textBaseline = "middle";
-            targetCtx.fillStyle = isDark
-              ? "rgba(255, 255, 255, 0.88)"
-              : "rgba(20, 20, 22, 0.88)";
-            targetCtx.fillText(caption.trim(), centerX, topSpaceCenterY);
+            targetCtx.textAlign = "left";
+            targetCtx.textBaseline = "top";
+            targetCtx.fillStyle = captionColor;
+            targetCtx.fillText(caption.trim(), padding, padding);
           }
-
-          const fontSize = Math.max(12, Math.round(minDim * 0.026));
-          targetCtx.font = `500 ${fontSize}px 'Roboto', sans-serif`;
-          targetCtx.fillStyle = isDark
-            ? "rgba(255, 255, 255, 0.45)"
-            : "rgba(0, 0, 0, 0.38)";
-          const padding = fontSize * 1.5;
-
-          targetCtx.textAlign = "left";
-          targetCtx.textBaseline = "bottom";
-          targetCtx.fillText(siteUrl, padding, height - padding);
 
           if (username) {
-            targetCtx.textAlign = "right";
-            targetCtx.fillText(
-              `@${username}`,
-              width - padding,
-              height - padding,
-            );
+            targetCtx.font = `500 ${baseFontSize}px 'Roboto', sans-serif`;
+            targetCtx.textAlign = "left";
+            targetCtx.textBaseline = "bottom";
+            targetCtx.fillStyle = idColor;
+            targetCtx.fillText(`@${username}`, padding, height - padding);
           }
-        } else if (layoutStyle === "stack") {
-          const smallFontSize = Math.max(12, Math.round(minDim * 0.026));
-          const captionFontSize = Math.max(16, Math.round(minDim * 0.042));
-          const padding = smallFontSize * 1.5;
-          const lineHeight = smallFontSize * 1.45;
 
+          targetCtx.font = `500 ${urlFontSize}px 'Roboto', sans-serif`;
+          targetCtx.textAlign = "right";
+          targetCtx.textBaseline = "bottom";
+          targetCtx.fillStyle = urlColor;
+          targetCtx.fillText(siteUrl, width - padding, height - padding);
+        } else if (layoutStyle === "stack") {
+          // Stackレイアウト：左下にスッキリ積み上げ
+          const lineHeight = baseFontSize * 1.45;
           targetCtx.textAlign = "left";
           targetCtx.textBaseline = "bottom";
 
-          targetCtx.font = `500 ${smallFontSize}px 'Roboto', sans-serif`;
-          targetCtx.fillStyle = isDark
-            ? "rgba(255, 255, 255, 0.45)"
-            : "rgba(0, 0, 0, 0.38)";
+          targetCtx.font = `500 ${urlFontSize}px 'Roboto', sans-serif`;
+          targetCtx.fillStyle = urlColor;
           targetCtx.fillText(siteUrl, padding, height - padding);
 
           let curBottomOffset = padding + lineHeight;
           if (username) {
+            targetCtx.font = `500 ${baseFontSize}px 'Roboto', sans-serif`;
+            targetCtx.fillStyle = idColor;
             targetCtx.fillText(
               `@${username}`,
               padding,
@@ -2420,9 +2379,7 @@
 
           if (caption && caption.trim()) {
             targetCtx.font = `500 ${captionFontSize}px 'Roboto', sans-serif`;
-            targetCtx.fillStyle = isDark
-              ? "rgba(255, 255, 255, 0.88)"
-              : "rgba(20, 20, 22, 0.88)";
+            targetCtx.fillStyle = captionColor;
             targetCtx.fillText(
               caption.trim(),
               padding,
@@ -2430,51 +2387,50 @@
             );
           }
         } else if (layoutStyle === "vertical") {
-          const smallFontSize = Math.max(11, Math.round(minDim * 0.024));
-          const captionFontSize = Math.max(15, Math.round(minDim * 0.038));
-          const padding = smallFontSize * 1.6;
+          // Verticalレイアウト：縦書き回転
+          const vSmallFontSize = Math.max(11, Math.round(minDim * 0.024));
+          const vUrlFontSize = Math.max(9.5, Math.round(vSmallFontSize * 0.84));
+          const vCaptionFontSize = Math.max(15, Math.round(minDim * 0.038));
+          const vPadding = vSmallFontSize * 1.6;
 
-          const col1X = padding + smallFontSize / 2;
+          // 列1: URL
+          const col1X = vPadding + vSmallFontSize / 2;
           targetCtx.save();
-          targetCtx.translate(col1X, padding);
+          targetCtx.translate(col1X, vPadding);
           targetCtx.rotate(Math.PI / 2);
           targetCtx.textAlign = "left";
           targetCtx.textBaseline = "middle";
-          targetCtx.font = `500 ${smallFontSize}px 'Roboto', sans-serif`;
-          targetCtx.fillStyle = isDark
-            ? "rgba(255, 255, 255, 0.45)"
-            : "rgba(0, 0, 0, 0.38)";
+          targetCtx.font = `500 ${vUrlFontSize}px 'Roboto', sans-serif`;
+          targetCtx.fillStyle = urlColor;
           targetCtx.fillText(siteUrl, 0, 0);
           targetCtx.restore();
 
-          let col2X = col1X + smallFontSize * 1.8;
+          // 列2: @ID
+          let col2X = col1X + vSmallFontSize * 1.8;
           if (username) {
             targetCtx.save();
-            targetCtx.translate(col2X, padding);
+            targetCtx.translate(col2X, vPadding);
             targetCtx.rotate(Math.PI / 2);
             targetCtx.textAlign = "left";
             targetCtx.textBaseline = "middle";
-            targetCtx.font = `500 ${smallFontSize}px 'Roboto', sans-serif`;
-            targetCtx.fillStyle = isDark
-              ? "rgba(255, 255, 255, 0.45)"
-              : "rgba(0, 0, 0, 0.38)";
+            targetCtx.font = `500 ${vSmallFontSize}px 'Roboto', sans-serif`;
+            targetCtx.fillStyle = idColor;
             targetCtx.fillText(`@${username}`, 0, 0);
             targetCtx.restore();
           }
 
+          // 列3: キャプション
           if (caption && caption.trim()) {
             const col3X =
               (username
-                ? col2X + smallFontSize * 1.8
-                : col1X + smallFontSize * 1.8) +
-              captionFontSize * 0.4;
-            targetCtx.font = `500 ${captionFontSize}px 'Roboto', sans-serif`;
-            targetCtx.fillStyle = isDark
-              ? "rgba(255, 255, 255, 0.88)"
-              : "rgba(20, 20, 22, 0.88)";
+                ? col2X + vSmallFontSize * 1.8
+                : col1X + vSmallFontSize * 1.8) +
+              vCaptionFontSize * 0.4;
+            targetCtx.font = `500 ${vCaptionFontSize}px 'Roboto', sans-serif`;
+            targetCtx.fillStyle = captionColor;
 
             const text = caption.trim();
-            let curY = padding + 2;
+            let curY = vPadding + 2;
             let prevType = null;
 
             for (let i = 0; i < text.length; i++) {
@@ -2487,21 +2443,21 @@
               const curType = isDash ? "dash" : isJp ? "jp" : "alpha";
 
               if (prevType === "alpha" && curType === "jp") {
-                curY += captionFontSize * 0.28;
+                curY += vCaptionFontSize * 0.28;
               } else if (prevType === "jp" && curType === "alpha") {
-                curY += captionFontSize * 0.18;
+                curY += vCaptionFontSize * 0.18;
               }
 
               targetCtx.save();
               if (isJp) {
-                const advanceY = captionFontSize * 1.05;
+                const advanceY = vCaptionFontSize * 1.05;
                 targetCtx.textAlign = "center";
                 targetCtx.textBaseline = "top";
                 targetCtx.fillText(ch, col3X, curY);
                 curY += advanceY;
               } else if (isDash) {
-                const advanceY = captionFontSize * 0.95;
-                targetCtx.translate(col3X, curY + advanceY / 2);
+                const advanceY = vCaptionFontSize * 0.95;
+                targetCtx.translate(col3X, curY + vCaptionFontSize * 0.4);
                 targetCtx.rotate(Math.PI / 2);
                 targetCtx.textAlign = "center";
                 targetCtx.textBaseline = "middle";
@@ -2510,11 +2466,11 @@
               } else {
                 const charMetrics = targetCtx.measureText(ch);
                 const charWidth = charMetrics.width;
-                const letterSpacing = captionFontSize * 0.08;
+                const letterSpacing = vCaptionFontSize * 0.08;
                 const advanceY =
                   (ch === " "
-                    ? captionFontSize * 0.35
-                    : Math.max(charWidth, captionFontSize * 0.28)) +
+                    ? vCaptionFontSize * 0.35
+                    : Math.max(charWidth, vCaptionFontSize * 0.28)) +
                   letterSpacing;
 
                 targetCtx.translate(col3X, curY + advanceY / 2);
@@ -2528,7 +2484,7 @@
 
               prevType = curType;
 
-              if (curY > height - padding * 2) break;
+              if (curY > height - vPadding * 2) break;
             }
           }
         }
@@ -2624,7 +2580,6 @@
         invalidateCache();
       }
 
-      // 12Mbps（超高画質）＆ 選択FPSでの動画書き出し
       async function startSynchronizedExport() {
         isExporting = true;
         controlsWrapper.classList.add("locked");
@@ -2640,7 +2595,7 @@
         playBtn.disabled = true;
         micRecordBtn.disabled = true;
 
-        const canvasStream = canvas.captureStream(currentFps);
+        const canvasStream = canvas.captureStream(FIXED_FPS);
         const audioDest = audioCtx.createMediaStreamDestination();
 
         exportSourceNode = audioCtx.createBufferSource();
@@ -2666,7 +2621,7 @@
         const ext = mimeType.includes("mp4") ? "mp4" : "webm";
         exportRecorderInstance = new MediaRecorder(combinedStream, {
           mimeType,
-          videoBitsPerSecond: 12000000, // 4Mbps → 12Mbps に爆上げ！ノイズを撲滅
+          videoBitsPerSecond: 12000000,
         });
 
         const chunks = [];
