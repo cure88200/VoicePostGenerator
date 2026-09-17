@@ -1,11 +1,10 @@
-const CACHE_NAME = "voice-post-cache-v2";
+const CACHE_NAME = "voice-post-cache-v3";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  "https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap",
 ];
 
 self.addEventListener("install", (event) => {
