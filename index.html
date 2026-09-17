@@ -2209,7 +2209,7 @@
         previewBgChunks = [];
         previewBgRecorder = new MediaRecorder(combinedStream, {
           mimeType,
-          videoBitsPerSecond: 3500000,
+          videoBitsPerSecond: 8000000,
         });
 
         previewBgRecorder.ondataavailable = (e) => {
@@ -2679,7 +2679,7 @@
         const ext = mimeType.includes("mp4") ? "mp4" : "webm";
         exportRecorderInstance = new MediaRecorder(combinedStream, {
           mimeType,
-          videoBitsPerSecond: 3500000,
+          videoBitsPerSecond: 8000000,
         });
 
         const chunks = [];
@@ -2723,7 +2723,7 @@
           progressBarFill.style.width = `${percent}%`;
         }, 100);
 
-        exportRecorderInstance.start();
+        exportRecorderInstance.start(1000);
         exportSourceNode.start(0, trimStartSec, duration);
 
         exportSourceNode.onended = () => {
