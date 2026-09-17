@@ -2,15 +2,22 @@
   "name": "VoicePostGenerator",
   "short_name": "VoicePost",
   "description": "SNS用の音声ポスト動画をブラウザ上でサクッと作成・書き出しできるツール",
+  "id": "./",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0f0f10",
   "theme_color": "#0f0f10",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%23171719'/%3E%3Crect x='116' y='216' width='40' height='80' rx='20' fill='%23ea7a99'/%3E%3Crect x='180' y='146' width='40' height='220' rx='20' fill='%23ea7a99'/%3E%3Crect x='244' y='76' width='40' height='360' rx='20' fill='%23ea7a99'/%3E%3Crect x='308' y='166' width='40' height='180' rx='20' fill='%23ea7a99'/%3E%3Crect x='372' y='226' width='40' height='60' rx='20' fill='%23ea7a99'/%3E%3C/svg%3E",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
