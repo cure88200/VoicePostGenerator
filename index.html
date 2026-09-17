@@ -28,10 +28,8 @@
     />
     <style>
       :root {
-        /* 全セクション共通の基準コンテンツ幅 */
         --content-width: 440px;
 
-        /* Dark Theme (完全無彩色・マットチャコール) */
         --md-sys-color-surface: #0f0f10;
         --md-sys-color-surface-container: #171719;
         --md-sys-color-surface-container-high: #212124;
@@ -54,7 +52,6 @@
 
       @media (prefers-color-scheme: light) {
         :root {
-          /* Light Theme (完全無彩色・クリーンホワイト＆ライトグレー) */
           --md-sys-color-surface: #ffffff;
           --md-sys-color-surface-container: #f5f5f6;
           --md-sys-color-surface-container-high: #ececed;
@@ -75,10 +72,17 @@
         box-sizing: border-box;
         margin: 0;
         padding: 0;
+        -webkit-tap-highlight-color: transparent;
         transition:
           background-color 0.25s ease,
           color 0.25s ease,
           border-color 0.25s ease;
+      }
+
+      html,
+      body {
+        overscroll-behavior: none;
+        touch-action: manipulation;
       }
 
       body {
@@ -93,6 +97,14 @@
         padding: 32px 16px;
         padding-top: calc(32px + env(safe-area-inset-top));
         padding-bottom: calc(32px + env(safe-area-inset-bottom));
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      input,
+      textarea {
+        user-select: text;
+        -webkit-user-select: text;
       }
 
       .app-container {
@@ -109,7 +121,6 @@
         position: relative;
       }
 
-      /* ドラッグ＆ドロップ用オーバーレイ */
       .drop-overlay {
         position: absolute;
         top: 0;
@@ -167,7 +178,6 @@
         opacity: 0.45;
       }
 
-      /* 上部ツールバー */
       .controls-grid {
         display: flex;
         gap: 8px;
@@ -219,7 +229,6 @@
         display: none;
       }
 
-      /* オプション設定アコーディオン */
       .options-details {
         width: 100%;
         max-width: var(--content-width);
@@ -297,7 +306,6 @@
         white-space: nowrap;
       }
 
-      /* 選択肢グループの横幅を230pxで完全に統一 */
       .settings-row .segmented-group,
       .settings-row .color-palette-group {
         width: 230px;
@@ -545,7 +553,6 @@
         display: none;
       }
 
-      /* キャンバス表示領域：背景透過・縦横完全固定モニター */
       .canvas-container {
         width: 100%;
         max-width: var(--content-width);
@@ -568,7 +575,6 @@
         background-color: transparent;
       }
 
-      /* オーディオ情報行 */
       .audio-meta-row {
         width: 100%;
         max-width: var(--content-width);
@@ -599,7 +605,6 @@
         text-overflow: ellipsis;
       }
 
-      /* 波形トリマーコンテナ */
       .waveform-trim-container {
         width: 100%;
         max-width: var(--content-width);
