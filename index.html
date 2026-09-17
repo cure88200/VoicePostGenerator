@@ -1192,9 +1192,17 @@
 
       // フレームレートは 60fps 完全固定
       const FIXED_FPS = 60;
-
       function invalidateCache() {
         cachedVideoBlob = null;
+        if (
+          isPlaying &&
+          previewBgRecorder &&
+          previewBgRecorder.state !== "inactive"
+        ) {
+          previewBgRecorder.onstop = null;
+          previewBgRecorder.stop();
+          previewBgRecorder = null;
+        }
       }
 
       let iconImg = new Image();
