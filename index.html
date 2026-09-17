@@ -8,8 +8,7 @@
     />
     <title>VoicePostGenerator</title>
 
-    <!-- PWA関連タグ -->
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#0f0f10" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -23,7 +22,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Shippori+Mincho:wght@500;700&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -849,7 +848,6 @@
           </button>
         </div>
 
-        <!-- オプション設定 -->
         <details class="options-details" id="optionsDetails">
           <summary class="options-summary">
             <span>オプション設定 (キャプション・テーマなど)</span>
@@ -886,6 +884,22 @@
                 </button>
                 <button type="button" class="segmented-btn" data-ratio="9:16">
                   9:16
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <span class="settings-label">フォント</span>
+              <div class="segmented-group">
+                <button
+                  type="button"
+                  class="segmented-btn active"
+                  data-font="gothic"
+                >
+                  Gothic
+                </button>
+                <button type="button" class="segmented-btn" data-font="mincho">
+                  Mincho
                 </button>
               </div>
             </div>
@@ -998,12 +1012,10 @@
         </details>
       </div>
 
-      <!-- プレビュー画面（背景透過・縦横完全固定モニター） -->
       <div class="canvas-container">
         <canvas id="canvas" width="1080" height="1080"></canvas>
       </div>
 
-      <!-- オーディオ情報行 -->
       <div class="audio-meta-row" id="audioMetaRow">
         <span class="audio-meta-badge" id="audioBadgeOverlay">NO AUDIO</span>
         <span class="audio-meta-name" id="audioNameOverlay"
@@ -1011,7 +1023,6 @@
         >
       </div>
 
-      <!-- 波形オーバーレイスライダートリマー -->
       <div class="waveform-trim-container" id="waveformTrimContainer">
         <div class="waveform-timeline-row">
           <span class="floating-dur-badge" id="floatingDurBadge">00:00.0</span>
@@ -1051,7 +1062,6 @@
         <div class="progress-bar-fill" id="progressBarFill"></div>
       </div>
 
-      <!-- 下部アクションバー -->
       <div class="action-row">
         <button
           class="btn btn-secondary btn-icon-circle btn-record-mic-circle"
@@ -1190,8 +1200,8 @@
       let previewBgRecorder = null;
       let previewBgChunks = [];
 
-      // フレームレートは 60fps 完全固定
       const FIXED_FPS = 60;
+
       function invalidateCache() {
         cachedVideoBlob = null;
         if (
@@ -1215,6 +1225,7 @@
       let isRadioEffect = false;
       let currentLayoutStyle = "classic";
       let currentAspectRatio = "1:1";
+      let currentFontFamily = "gothic";
 
       const defaultColors = [
         { r: 234, g: 122, b: 153 },
@@ -1288,6 +1299,7 @@
           customIconBase64: customIconBase64,
           caption: captionInput.value,
           aspectRatio: currentAspectRatio,
+          fontFamily: currentFontFamily,
           videoMode: videoMode,
           layoutStyle: currentLayoutStyle,
           isRadioEffect: isRadioEffect,
@@ -1329,6 +1341,15 @@
               btn.classList.toggle(
                 "active",
                 btn.dataset.ratio === prefs.aspectRatio,
+              );
+            });
+          }
+          if (prefs.fontFamily) {
+            currentFontFamily = prefs.fontFamily;
+            document.querySelectorAll("[data-font]").forEach((btn) => {
+              btn.classList.toggle(
+                "active",
+                btn.dataset.font === prefs.fontFamily,
               );
             });
           }
@@ -1402,6 +1423,17 @@
         drawWaveform();
         invalidateCache();
         savePreferences();
+      });
+
+      const fontButtons = document.querySelectorAll("[data-font]");
+      fontButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          fontButtons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          currentFontFamily = btn.dataset.font;
+          invalidateCache();
+          savePreferences();
+        });
       });
 
       const layoutButtons = document.querySelectorAll("[data-layout]");
@@ -2146,7 +2178,6 @@
         }
       });
 
-      // プレビュー再生（60fps固定）
       function playAudioPreview() {
         currentSourceNode = audioCtx.createBufferSource();
         currentSourceNode.buffer = audioBuffer;
@@ -2263,6 +2294,7 @@
         username,
         caption,
         layoutStyle,
+        fontFamilyChoice,
       ) {
         targetCtx.clearRect(0, 0, width, height);
         targetCtx.fillStyle = bgColor;
@@ -2344,6 +2376,11 @@
         const minDim = Math.min(width, height);
         const siteUrl = "cure88200.github.io/VoicePostGenerator";
 
+        const targetFontFamily =
+          fontFamilyChoice === "mincho"
+            ? "'Shippori Mincho', 'Yu Mincho', 'Hiragino Mincho ProN', serif"
+            : "'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
+
         const baseFontSize = Math.max(12, Math.round(minDim * 0.026));
         const urlFontSize = Math.max(10, Math.round(baseFontSize * 0.84));
         const captionFontSize = Math.max(16, Math.round(minDim * 0.042));
@@ -2361,7 +2398,7 @@
 
         if (layoutStyle === "classic") {
           if (caption && caption.trim()) {
-            targetCtx.font = `500 ${captionFontSize}px 'Roboto', sans-serif`;
+            targetCtx.font = `500 ${captionFontSize}px ${targetFontFamily}`;
             targetCtx.textAlign = "left";
             targetCtx.textBaseline = "top";
             targetCtx.fillStyle = captionColor;
@@ -2369,14 +2406,14 @@
           }
 
           if (username) {
-            targetCtx.font = `500 ${baseFontSize}px 'Roboto', sans-serif`;
+            targetCtx.font = `500 ${baseFontSize}px ${targetFontFamily}`;
             targetCtx.textAlign = "left";
             targetCtx.textBaseline = "bottom";
             targetCtx.fillStyle = idColor;
             targetCtx.fillText(`@${username}`, padding, height - padding);
           }
 
-          targetCtx.font = `500 ${urlFontSize}px 'Roboto', sans-serif`;
+          targetCtx.font = `500 ${urlFontSize}px ${targetFontFamily}`;
           targetCtx.textAlign = "right";
           targetCtx.textBaseline = "bottom";
           targetCtx.fillStyle = urlColor;
@@ -2386,13 +2423,13 @@
           targetCtx.textAlign = "left";
           targetCtx.textBaseline = "bottom";
 
-          targetCtx.font = `500 ${urlFontSize}px 'Roboto', sans-serif`;
+          targetCtx.font = `500 ${urlFontSize}px ${targetFontFamily}`;
           targetCtx.fillStyle = urlColor;
           targetCtx.fillText(siteUrl, padding, height - padding);
 
           let curBottomOffset = padding + lineHeight;
           if (username) {
-            targetCtx.font = `500 ${baseFontSize}px 'Roboto', sans-serif`;
+            targetCtx.font = `500 ${baseFontSize}px ${targetFontFamily}`;
             targetCtx.fillStyle = idColor;
             targetCtx.fillText(
               `@${username}`,
@@ -2403,7 +2440,7 @@
           }
 
           if (caption && caption.trim()) {
-            targetCtx.font = `500 ${captionFontSize}px 'Roboto', sans-serif`;
+            targetCtx.font = `500 ${captionFontSize}px ${targetFontFamily}`;
             targetCtx.fillStyle = captionColor;
             targetCtx.fillText(
               caption.trim(),
@@ -2423,7 +2460,7 @@
           targetCtx.rotate(Math.PI / 2);
           targetCtx.textAlign = "left";
           targetCtx.textBaseline = "middle";
-          targetCtx.font = `500 ${vUrlFontSize}px 'Roboto', sans-serif`;
+          targetCtx.font = `500 ${vUrlFontSize}px ${targetFontFamily}`;
           targetCtx.fillStyle = urlColor;
           targetCtx.fillText(siteUrl, 0, 0);
           targetCtx.restore();
@@ -2435,7 +2472,7 @@
             targetCtx.rotate(Math.PI / 2);
             targetCtx.textAlign = "left";
             targetCtx.textBaseline = "middle";
-            targetCtx.font = `500 ${vSmallFontSize}px 'Roboto', sans-serif`;
+            targetCtx.font = `500 ${vSmallFontSize}px ${targetFontFamily}`;
             targetCtx.fillStyle = idColor;
             targetCtx.fillText(`@${username}`, 0, 0);
             targetCtx.restore();
@@ -2447,7 +2484,7 @@
                 ? col2X + vSmallFontSize * 1.8
                 : col1X + vSmallFontSize * 1.8) +
               vCaptionFontSize * 0.4;
-            targetCtx.font = `500 ${vCaptionFontSize}px 'Roboto', sans-serif`;
+            targetCtx.font = `500 ${vCaptionFontSize}px ${targetFontFamily}`;
             targetCtx.fillStyle = captionColor;
 
             const text = caption.trim();
@@ -2759,12 +2796,12 @@
           currentUsername,
           currentCaption,
           currentLayoutStyle,
+          currentFontFamily,
         );
       }
 
       previewLoop();
 
-      // Service Workerの登録処理
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker.register("./sw.js").catch((err) => {
