@@ -2209,7 +2209,7 @@
         previewBgChunks = [];
         previewBgRecorder = new MediaRecorder(combinedStream, {
           mimeType,
-          videoBitsPerSecond: 12000000,
+          videoBitsPerSecond: 3500000,
         });
 
         previewBgRecorder.ondataavailable = (e) => {
@@ -2679,7 +2679,7 @@
         const ext = mimeType.includes("mp4") ? "mp4" : "webm";
         exportRecorderInstance = new MediaRecorder(combinedStream, {
           mimeType,
-          videoBitsPerSecond: 12000000,
+          videoBitsPerSecond: 3500000,
         });
 
         const chunks = [];
