@@ -1104,7 +1104,7 @@
         <button
           class="btn btn-primary btn-icon-circle"
           id="recordBtn"
-          title="動画を書き出す (MP4)"
+          title="動画を書き出す"
         >
           <svg id="downloadIcon" viewBox="0 0 24 24">
             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
@@ -1199,6 +1199,8 @@
       let cachedVideoBlob = null;
       let previewBgRecorder = null;
       let previewBgChunks = [];
+      let previewBgStream = null;
+      let exportCombinedStream = null;
 
       const FIXED_FPS = 60;
 
@@ -1212,6 +1214,10 @@
           previewBgRecorder.onstop = null;
           previewBgRecorder.stop();
           previewBgRecorder = null;
+        }
+        if (previewBgStream) {
+          previewBgStream.getTracks().forEach((track) => track.stop());
+          previewBgStream = null;
         }
       }
 
@@ -2204,6 +2210,7 @@
           ...canvasStream.getVideoTracks(),
           ...audioDest.stream.getAudioTracks(),
         ]);
+        previewBgStream = combinedStream;
 
         const mimeType = getOptimalMp4MimeType();
         previewBgChunks = [];
@@ -2216,7 +2223,7 @@
           if (e.data && e.data.size > 0) previewBgChunks.push(e.data);
         };
 
-        previewBgRecorder.start();
+        previewBgRecorder.start(1000);
 
         const playDuration = Math.max(0.1, trimEndSec - trimStartSec);
         currentSourceNode.start(0, trimStartSec, playDuration);
@@ -2247,7 +2254,16 @@
           if (isFinished) {
             previewBgRecorder.onstop = () => {
               const mimeType = getOptimalMp4MimeType();
-              cachedVideoBlob = new Blob(previewBgChunks, { type: mimeType });
+              if (previewBgChunks.length > 0) {
+                const blob = new Blob(previewBgChunks, { type: mimeType });
+                if (blob.size > 2000) {
+                  cachedVideoBlob = blob;
+                } else {
+                  cachedVideoBlob = null;
+                }
+              } else {
+                cachedVideoBlob = null;
+              }
               previewBgRecorder = null;
             };
             previewBgRecorder.stop();
@@ -2257,6 +2273,11 @@
             previewBgRecorder = null;
             invalidateCache();
           }
+        }
+
+        if (previewBgStream) {
+          previewBgStream.getTracks().forEach((track) => track.stop());
+          previewBgStream = null;
         }
       }
 
@@ -2301,8 +2322,8 @@
         targetCtx.fillRect(0, 0, width, height);
 
         const centerX = width / 2;
-        const centerY = height / 2;
         const baseRadius = getScaledBaseRadius(width, height, ratio);
+        const centerY = height / 2;
 
         const circles = [
           { dx: 1, dy: -1, phaseOffset: 0 },
@@ -2556,10 +2577,8 @@
 
       function getOptimalMp4MimeType() {
         const mp4Types = [
-          "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-          "video/mp4;codecs=avc1.4d401f,mp4a.40.2",
-          "video/mp4;codecs=avc1,mp4a.40.2",
           "video/mp4",
+          "video/mp4;codecs=avc1",
           "video/webm;codecs=vp9,opus",
           "video/webm",
         ];
@@ -2579,7 +2598,7 @@
           return alert("音声ファイルを選択するか録音してください");
         if (isPlaying || isMicRecording) return;
 
-        if (cachedVideoBlob) {
+        if (cachedVideoBlob && cachedVideoBlob.size > 2000) {
           const mimeType = getOptimalMp4MimeType();
           const ext = mimeType.includes("mp4") ? "mp4" : "webm";
           const url = URL.createObjectURL(cachedVideoBlob);
@@ -2589,6 +2608,8 @@
           a.click();
           URL.revokeObjectURL(url);
           return;
+        } else {
+          invalidateCache();
         }
 
         if (audioCtx.state === "suspended") await audioCtx.resume();
@@ -2621,6 +2642,11 @@
           exportRecorderInstance = null;
         }
 
+        if (exportCombinedStream) {
+          exportCombinedStream.getTracks().forEach((track) => track.stop());
+          exportCombinedStream = null;
+        }
+
         isPlaying = false;
         isExporting = false;
 
@@ -2631,7 +2657,7 @@
 
         downloadIcon.style.display = "block";
         cancelExportIcon.style.display = "none";
-        recordBtn.title = "動画を書き出す (MP4)";
+        recordBtn.title = "動画を書き出す";
 
         playBtn.disabled = false;
         micRecordBtn.disabled = false;
@@ -2674,6 +2700,7 @@
           ...canvasStream.getVideoTracks(),
           ...audioDest.stream.getAudioTracks(),
         ]);
+        exportCombinedStream = combinedStream;
 
         const mimeType = getOptimalMp4MimeType();
         const ext = mimeType.includes("mp4") ? "mp4" : "webm";
@@ -2687,16 +2714,35 @@
           if (e.data && e.data.size > 0) chunks.push(e.data);
         };
 
-        exportRecorderInstance.onstop = () => {
-          const blob = new Blob(chunks, { type: mimeType });
-          cachedVideoBlob = blob;
+        exportRecorderInstance.onerror = (err) => {
+          console.error("Export recorder error:", err);
+          cancelSynchronizedExport();
+          alert(
+            "動画の書き出しに失敗しました。繰り返す場合はブラウザのキャッシュをクリアしてから再度お試しください。",
+          );
+        };
 
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `voice_post_${Date.now()}.${ext}`;
-          a.click();
-          URL.revokeObjectURL(url);
+        exportRecorderInstance.onstop = () => {
+          if (exportCombinedStream) {
+            exportCombinedStream.getTracks().forEach((track) => track.stop());
+            exportCombinedStream = null;
+          }
+
+          if (chunks.length > 0) {
+            const blob = new Blob(chunks, { type: mimeType });
+            if (blob.size > 2000) {
+              cachedVideoBlob = blob;
+
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `voice_post_${Date.now()}.${ext}`;
+              a.click();
+              URL.revokeObjectURL(url);
+            } else {
+              alert("書き出しデータが空のため処理を中断しました。");
+            }
+          }
 
           controlsWrapper.classList.remove("locked");
           waveformTrimContainer.classList.remove("locked");
@@ -2705,7 +2751,7 @@
 
           downloadIcon.style.display = "block";
           cancelExportIcon.style.display = "none";
-          recordBtn.title = "動画を書き出す (MP4)";
+          recordBtn.title = "動画を書き出す";
 
           playBtn.disabled = false;
           micRecordBtn.disabled = false;
