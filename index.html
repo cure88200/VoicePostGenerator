@@ -2769,11 +2769,13 @@
           progressBarFill.style.width = `${percent}%`;
         }, 100);
 
-        exportRecorderInstance.start(); // 1000 を消す！
+        exportRecorderInstance.start();
 
-        setTimeout(() => {
-          exportSourceNode.start(0, trimStartSec, duration);
-        }, 100);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            exportSourceNode.start(0, trimStartSec, duration);
+          });
+        });
 
         exportSourceNode.onended = () => {
           if (exportProgressInterval) clearInterval(exportProgressInterval);
