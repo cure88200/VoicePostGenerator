@@ -2223,7 +2223,7 @@
           if (e.data && e.data.size > 0) previewBgChunks.push(e.data);
         };
 
-        previewBgRecorder.start(1000);
+        previewBgRecorder.start();
 
         const playDuration = Math.max(0.1, trimEndSec - trimStartSec);
         currentSourceNode.start(0, trimStartSec, playDuration);
@@ -2769,7 +2769,7 @@
           progressBarFill.style.width = `${percent}%`;
         }, 100);
 
-        exportRecorderInstance.start(1000);
+        exportRecorderInstance.start();
         exportSourceNode.start(0, trimStartSec, duration);
 
         exportSourceNode.onended = () => {
