@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>VoicePostGenerator</title>
+    <title>Voice Post Generator</title>
 
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#0f0f10" />
@@ -16,7 +16,7 @@
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <meta name="apple-mobile-web-app-title" content="VoicePost" />
+    <meta name="apple-mobile-web-app-title" content="Voice Post Generator" />
 
     <link rel="icon" id="faviconLink" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -788,7 +788,7 @@
             d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"
           />
         </svg>
-        <span>音声または画像をドロップ</span>
+        <span>Drop audio or image</span>
       </div>
 
       <h1>VoicePostGenerator</h1>
@@ -797,16 +797,14 @@
         <div class="controls-grid">
           <div class="md-text-field">
             <span class="prefix">@</span>
-            <input type="text" id="usernameInput" placeholder="𝕏 ID" />
+            <input type="text" id="usernameInput" placeholder="X ID" />
           </div>
-          <button class="btn btn-secondary" id="loadBtn">
-            IDからアイコン取得
-          </button>
+          <button class="btn btn-secondary" id="loadBtn">Get Icon</button>
 
           <label
             class="btn btn-secondary btn-icon-square"
             for="imageInput"
-            title="端末からアイコン画像を選択"
+            title="Select image"
           >
             <svg viewBox="0 0 24 24">
               <path
@@ -819,7 +817,7 @@
           <button
             class="btn btn-secondary btn-icon-square"
             id="clearImageBtn"
-            title="アイコンをクリア"
+            title="Clear image"
             style="display: none"
           >
             <svg viewBox="0 0 24 24">
@@ -832,7 +830,7 @@
 
         <details class="options-details" id="optionsDetails">
           <summary class="options-summary">
-            <span>オプション設定 (キャプション・テーマなど)</span>
+            <span>Options</span>
             <svg viewBox="0 0 24 24">
               <path
                 d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
@@ -845,14 +843,14 @@
                 <input
                   type="text"
                   id="captionInput"
-                  placeholder="キャプション"
+                  placeholder="Caption"
                   maxlength="40"
                 />
               </div>
             </div>
 
             <div class="settings-row">
-              <span class="settings-label">アスペクト比</span>
+              <span class="settings-label">Ratio</span>
               <div class="segmented-group">
                 <button
                   type="button"
@@ -871,7 +869,7 @@
             </div>
 
             <div class="settings-row">
-              <span class="settings-label">フォント</span>
+              <span class="settings-label">Font</span>
               <div class="segmented-group">
                 <button
                   type="button"
@@ -887,7 +885,7 @@
             </div>
 
             <div class="settings-row">
-              <span class="settings-label">動画テーマ</span>
+              <span class="settings-label">Theme</span>
               <div class="segmented-group">
                 <button
                   type="button"
@@ -903,7 +901,7 @@
             </div>
 
             <div class="settings-row">
-              <span class="settings-label">レイアウト</span>
+              <span class="settings-label">Layout</span>
               <div class="segmented-group">
                 <button
                   type="button"
@@ -926,7 +924,7 @@
             </div>
 
             <div class="settings-row">
-              <span class="settings-label">音声エフェクト</span>
+              <span class="settings-label">Effect</span>
               <div class="segmented-group">
                 <button
                   type="button"
@@ -946,27 +944,27 @@
             </div>
 
             <div class="settings-row">
-              <span class="settings-label">カラーパレット</span>
+              <span class="settings-label">Color</span>
               <div class="color-palette-group">
                 <button
                   class="color-swatch active"
                   id="swatch0"
-                  title="パレットカラー 1"
+                  title="Color 1"
                 ></button>
                 <button
                   class="color-swatch"
                   id="swatch1"
-                  title="パレットカラー 2"
+                  title="Color 2"
                 ></button>
                 <button
                   class="color-swatch"
                   id="swatch2"
-                  title="パレットカラー 3"
+                  title="Color 3"
                 ></button>
                 <div
                   class="color-picker-wrapper"
                   id="customPickerWrapper"
-                  title="カスタムカラーを編集"
+                  title="Custom color"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -996,7 +994,7 @@
       <div class="audio-meta-row" id="audioMetaRow">
         <span class="audio-meta-badge" id="audioBadgeOverlay">NO AUDIO</span>
         <span class="audio-meta-name" id="audioNameOverlay"
-          >音声が読み込まれていません</span
+          >No audio loaded</span
         >
       </div>
 
@@ -1012,15 +1010,11 @@
           <div
             class="trim-handle start-handle"
             id="startHandle"
-            title="開始位置 (IN)"
+            title="Start (IN)"
           >
             <div class="handle-bar"></div>
           </div>
-          <div
-            class="trim-handle end-handle"
-            id="endHandle"
-            title="終了位置 (OUT)"
-          >
+          <div class="trim-handle end-handle" id="endHandle" title="End (OUT)">
             <div class="handle-bar"></div>
           </div>
         </div>
@@ -1043,7 +1037,7 @@
         <button
           class="btn btn-secondary btn-icon-circle btn-record-mic-circle"
           id="micRecordBtn"
-          title="マイクで録音"
+          title="Record mic"
         >
           <span class="rec-dot-circle"></span>
         </button>
@@ -1051,7 +1045,7 @@
         <label
           class="btn btn-secondary btn-icon-circle"
           for="audioInput"
-          title="音声ファイルを選択"
+          title="Select audio"
         >
           <svg viewBox="0 0 24 24">
             <path
@@ -1068,7 +1062,7 @@
         <button
           class="btn btn-secondary btn-icon-circle"
           id="playBtn"
-          title="プレビュー再生 / 停止"
+          title="Play / Stop"
         >
           <svg id="playIcon" viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z" />
@@ -1081,7 +1075,7 @@
         <button
           class="btn btn-primary btn-icon-circle"
           id="recordBtn"
-          title="動画を書き出す"
+          title="Export"
         >
           <svg id="downloadIcon" viewBox="0 0 24 24">
             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
@@ -1536,7 +1530,7 @@
           initWaveformTrimmer(audioBuffer);
           invalidateCache();
         } catch (err) {
-          alert("音声データの読み込みに失敗しました: " + err.message);
+          alert("Failed to load audio: " + err.message);
         }
       }
 
@@ -1597,7 +1591,7 @@
         } else if (file.type.startsWith("image/")) {
           await processImageFile(file);
         } else {
-          alert("音声ファイルまたは画像ファイルをドロップしてください");
+          alert("Please drop an audio or image file.");
         }
       });
 
@@ -2122,7 +2116,7 @@
               if (e.data && e.data.size > 0) micChunks.push(e.data);
             };
 
-            updateAudioStatus("mic", "録音中...");
+            updateAudioStatus("mic", "Recording...");
             invalidateCache();
 
             micRecorder.onstop = async () => {
@@ -2135,7 +2129,7 @@
               const arrayBuffer = await micBlob.arrayBuffer();
               audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-              updateAudioStatus("mic", "マイク録音オーディオ");
+              updateAudioStatus("mic", "Mic Recording");
               initWaveformTrimmer(audioBuffer);
               invalidateCache();
 
@@ -2151,7 +2145,7 @@
             playBtn.disabled = true;
             recordBtn.disabled = true;
           } catch (err) {
-            alert("マイクへのアクセスが許可されていません: " + err.message);
+            alert("Microphone access denied: " + err.message);
           }
         } else {
           micRecorder.stop();
@@ -2262,8 +2256,7 @@
       }
 
       playBtn.addEventListener("click", () => {
-        if (!audioBuffer)
-          return alert("音声ファイルを選択するか録音してください");
+        if (!audioBuffer) return alert("Please select or record audio.");
         if (isExporting || isMicRecording) return;
 
         if (audioCtx.state === "suspended") audioCtx.resume();
@@ -2667,7 +2660,7 @@
 
         downloadIcon.style.display = "none";
         cancelExportIcon.style.display = "block";
-        recordBtn.title = "書き出しを中断";
+        recordBtn.title = "Cancel export";
 
         playBtn.disabled = true;
         micRecordBtn.disabled = true;
@@ -2711,7 +2704,7 @@
           console.error("Export recorder error:", err);
           cancelSynchronizedExport();
           alert(
-            "動画の書き出しに失敗しました。繰り返す場合はブラウザのキャッシュをクリアしてから再度お試しください。",
+            "Export failed. If this repeats, please clear browser cache and try again.",
           );
         };
 
@@ -2733,7 +2726,7 @@
               a.click();
               URL.revokeObjectURL(url);
             } else {
-              alert("書き出しデータが空のため処理を中断しました。");
+              alert("Export aborted: output data is empty.");
             }
           }
 
