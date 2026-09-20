@@ -2250,6 +2250,8 @@
         recordBtn.disabled = false;
         playheadLine.style.display = "none";
 
+        updateWaveformDisplay();
+
         if (previewBgRecorder && previewBgRecorder.state !== "inactive") {
           if (isFinished) {
             previewBgRecorder.onstop = () => {
@@ -2832,6 +2834,8 @@
             padRatio + (currentSec / totalDur) * effectiveRatio;
 
           playheadLine.style.left = `${currentRatio * 100}%`;
+
+          floatingDurBadge.textContent = formatPreciseTime(currentSec);
         }
 
         renderFrame(
