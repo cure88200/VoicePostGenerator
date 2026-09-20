@@ -940,11 +940,6 @@
                   class="segmented-btn"
                   id="audioEffectRadio"
                 >
-                  <svg viewBox="0 0 24 24">
-                    <path
-                      d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2H8.3l8.26-3.34c.3-.12.45-.46.33-.76-.12-.3-.46-.45-.76-.33L3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-8V9h8v3z"
-                    />
-                  </svg>
                   Radio
                 </button>
               </div>
@@ -1261,17 +1256,21 @@
 
       function createResizedIconDataUrl(img, maxSize = 256) {
         const c = document.createElement("canvas");
-        c.width = maxSize;
-        c.height = maxSize;
-        const tCtx = c.getContext("2d");
-
         const sw = img.naturalWidth || img.width;
         const sh = img.naturalHeight || img.height;
-        const side = Math.min(sw, sh);
-        const sx = (sw - side) / 2;
-        const sy = (sh - side) / 2;
 
-        tCtx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+        let tw = sw;
+        let th = sh;
+        if (tw > maxSize || th > maxSize) {
+          const ratio = Math.min(maxSize / tw, maxSize / th);
+          tw = Math.round(tw * ratio);
+          th = Math.round(th * ratio);
+        }
+
+        c.width = tw;
+        c.height = th;
+        const tCtx = c.getContext("2d");
+        tCtx.drawImage(img, 0, 0, tw, th);
         return c.toDataURL("image/png");
       }
 
@@ -2347,21 +2346,34 @@
 
           const imgW = iconImg.naturalWidth;
           const imgH = iconImg.naturalHeight;
-          const side = Math.min(imgW, imgH);
-          const sx = (imgW - side) / 2;
-          const sy = (imgH - side) / 2;
 
-          targetCtx.drawImage(
-            iconImg,
-            sx,
-            sy,
-            side,
-            side,
-            centerX - baseRadius,
-            centerY - baseRadius,
-            baseRadius * 2,
-            baseRadius * 2,
-          );
+          if (hasTransparentBackground) {
+            const scale = (baseRadius * 1.7) / Math.max(imgW, imgH);
+            const drawW = imgW * scale;
+            const drawH = imgH * scale;
+            targetCtx.drawImage(
+              iconImg,
+              centerX - drawW / 2,
+              centerY - drawH / 2,
+              drawW,
+              drawH,
+            );
+          } else {
+            const side = Math.min(imgW, imgH);
+            const sx = (imgW - side) / 2;
+            const sy = (imgH - side) / 2;
+            targetCtx.drawImage(
+              iconImg,
+              sx,
+              sy,
+              side,
+              side,
+              centerX - baseRadius,
+              centerY - baseRadius,
+              baseRadius * 2,
+              baseRadius * 2,
+            );
+          }
           targetCtx.restore();
 
           if (!hasTransparentBackground) {
