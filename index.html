@@ -9,14 +9,14 @@
     <title>Voice Post Generator</title>
 
     <link rel="manifest" href="./manifest.json" />
-    <meta name="theme-color" content="#0f0f10" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <meta name="apple-mobile-web-app-title" content="Voice Post Generator" />
+    <meta name="apple-mobile-web-app-title" content="VoicePost" />
 
     <link rel="icon" id="faviconLink" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -326,6 +326,10 @@
       .segmented-btn.active {
         background-color: var(--md-sys-color-secondary-container);
         color: var(--md-sys-color-on-secondary-container);
+      }
+
+      .segmented-btn.disabled {
+        opacity: 0.38;
       }
 
       .segmented-btn svg {
@@ -778,7 +782,37 @@
         color: var(--md-sys-color-on-surface);
         text-decoration: underline;
       }
+
+      .toast-container {
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background-color: var(--md-sys-color-on-surface);
+        color: var(--md-sys-color-surface);
+        padding: 12px 24px;
+        border-radius: var(--md-shape-corner-full);
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+        z-index: 9999;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        white-space: pre-wrap;
+        max-width: 85%;
+        line-height: 1.5;
+        letter-spacing: 0.2px;
+      }
+
+      .toast-container.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
     </style>
+    <script src="https://unpkg.com/fix-webm-duration"></script>
+    <script src="https://unpkg.com/mp4-muxer"></script>
   </head>
   <body>
     <div class="app-container" id="appContainer">
@@ -1089,12 +1123,14 @@
       </div>
     </div>
 
+    <div id="toastContainer" class="toast-container"></div>
+
     <footer>
       Created by
       <a href="https://x.com/cure88200" target="_blank" rel="noopener"
         >cure88200</a
       >
-      with Gemini
+      with Gemini <span style="opacity: 0.6; margin-left: 6px">v1.0.0</span>
     </footer>
 
     <script>
@@ -1147,13 +1183,27 @@
       const dropOverlay = document.getElementById("dropOverlay");
       const faviconLink = document.getElementById("faviconLink");
 
+      const toastContainer = document.getElementById("toastContainer");
+      let toastTimeout;
+
+      function showToast(message) {
+        toastContainer.textContent = message;
+        toastContainer.classList.add("show");
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          toastContainer.classList.remove("show");
+        }, 3500);
+      }
+
       let audioCtx, analyser, audioBuffer;
       let isPlaying = false;
       let currentSourceNode = null;
       let isExporting = false;
 
       let exportSourceNode = null;
-      let exportRecorderInstance = null;
+      let exportVideoEncoder = null;
+      let exportAudioEncoder = null;
+      let exportMuxer = null;
       let exportProgressInterval = null;
 
       let trimStartSec = 0;
@@ -1171,7 +1221,6 @@
       let previewBgRecorder = null;
       let previewBgChunks = [];
       let previewBgStream = null;
-      let exportCombinedStream = null;
 
       const FIXED_FPS = 60;
 
@@ -1219,6 +1268,19 @@
       let computedBgColor = "#0f1419";
       let computedEffectColor = { r: 234, g: 122, b: 153 };
       let smoothedVolume = 0;
+
+      function getOptimalMp4MimeType() {
+        const mp4Types = [
+          "video/mp4",
+          "video/mp4;codecs=avc1",
+          "video/webm;codecs=vp9,opus",
+          "video/webm",
+        ];
+        for (const t of mp4Types) {
+          if (MediaRecorder.isTypeSupported(t)) return t;
+        }
+        return "";
+      }
 
       function updateDynamicFavicon() {
         const fCanvas = document.createElement("canvas");
@@ -1302,7 +1364,7 @@
 
           if (prefs.hasLoadedIcon) {
             if (prefs.customIconBase64) {
-              customIconBase64 = prefs.customIconBase64;
+              customIconBase64 = customIconBase64;
               iconImg.src = customIconBase64;
             } else if (prefs.username) {
               loadIcon(prefs.username);
@@ -1530,7 +1592,7 @@
           initWaveformTrimmer(audioBuffer);
           invalidateCache();
         } catch (err) {
-          alert("Failed to load audio: " + err.message);
+          showToast("Failed to load audio: " + err.message);
         }
       }
 
@@ -1591,7 +1653,7 @@
         } else if (file.type.startsWith("image/")) {
           await processImageFile(file);
         } else {
-          alert("Please drop an audio or image file.");
+          showToast("Please drop an audio or image file.");
         }
       });
 
@@ -2145,7 +2207,7 @@
             playBtn.disabled = true;
             recordBtn.disabled = true;
           } catch (err) {
-            alert("Microphone access denied: " + err.message);
+            showToast("Microphone access denied: " + err.message);
           }
         } else {
           micRecorder.stop();
@@ -2155,12 +2217,11 @@
           recordBtn.disabled = false;
         }
       });
-
       function playAudioPreview() {
         currentSourceNode = audioCtx.createBufferSource();
         currentSourceNode.buffer = audioBuffer;
 
-        if (!analyser) {
+        if (!analyser || analyser.context !== audioCtx) {
           analyser = audioCtx.createAnalyser();
           analyser.fftSize = 256;
           analyser.smoothingTimeConstant = 0.45;
@@ -2172,30 +2233,7 @@
         previewGain.connect(analyser);
         previewGain.connect(audioCtx.destination);
 
-        const audioDest = audioCtx.createMediaStreamDestination();
-        previewGain.connect(audioDest);
-
         attachRadioEffects(currentSourceNode, previewGain, audioCtx);
-
-        const canvasStream = canvas.captureStream(FIXED_FPS);
-        const combinedStream = new MediaStream([
-          ...canvasStream.getVideoTracks(),
-          ...audioDest.stream.getAudioTracks(),
-        ]);
-        previewBgStream = combinedStream;
-
-        const mimeType = getOptimalMp4MimeType();
-        previewBgChunks = [];
-        previewBgRecorder = new MediaRecorder(combinedStream, {
-          mimeType,
-          videoBitsPerSecond: 8000000,
-        });
-
-        previewBgRecorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) previewBgChunks.push(e.data);
-        };
-
-        previewBgRecorder.start();
 
         const playDuration = Math.max(0.1, trimEndSec - trimStartSec);
         currentSourceNode.start(0, trimStartSec, playDuration);
@@ -2223,40 +2261,10 @@
         playheadLine.style.display = "none";
 
         updateWaveformDisplay();
-
-        if (previewBgRecorder && previewBgRecorder.state !== "inactive") {
-          if (isFinished) {
-            previewBgRecorder.onstop = () => {
-              const mimeType = getOptimalMp4MimeType();
-              if (previewBgChunks.length > 0) {
-                const blob = new Blob(previewBgChunks, { type: mimeType });
-                if (blob.size > 2000) {
-                  cachedVideoBlob = blob;
-                } else {
-                  cachedVideoBlob = null;
-                }
-              } else {
-                cachedVideoBlob = null;
-              }
-              previewBgRecorder = null;
-            };
-            previewBgRecorder.stop();
-          } else {
-            previewBgRecorder.onstop = null;
-            previewBgRecorder.stop();
-            previewBgRecorder = null;
-            invalidateCache();
-          }
-        }
-
-        if (previewBgStream) {
-          previewBgStream.getTracks().forEach((track) => track.stop());
-          previewBgStream = null;
-        }
       }
 
       playBtn.addEventListener("click", () => {
-        if (!audioBuffer) return alert("Please select or record audio.");
+        if (!audioBuffer) return showToast("Please select or record audio.");
         if (isExporting || isMicRecording) return;
 
         if (audioCtx.state === "suspended") audioCtx.resume();
@@ -2561,44 +2569,18 @@
         targetCtx.strokeRect(0.5, 0.5, width - 1, height - 1);
       }
 
-      function getOptimalMp4MimeType() {
-        const mp4Types = [
-          "video/mp4",
-          "video/mp4;codecs=avc1",
-          "video/webm;codecs=vp9,opus",
-          "video/webm",
-        ];
-        for (const t of mp4Types) {
-          if (MediaRecorder.isTypeSupported(t)) return t;
-        }
-        return "";
-      }
-
       recordBtn.addEventListener("click", async () => {
         if (isExporting) {
           cancelSynchronizedExport();
           return;
         }
-
-        if (!audioBuffer)
-          return alert("音声ファイルを選択するか録音してください");
+        if (!audioBuffer) return showToast("Please select or record audio.");
         if (isPlaying || isMicRecording) return;
 
-        if (cachedVideoBlob && cachedVideoBlob.size > 2000) {
-          const mimeType = getOptimalMp4MimeType();
-          const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-          const url = URL.createObjectURL(cachedVideoBlob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `voice_post_${Date.now()}.${ext}`;
-          a.click();
-          URL.revokeObjectURL(url);
-          return;
-        } else {
-          invalidateCache();
-        }
+        invalidateCache();
 
         if (audioCtx.state === "suspended") await audioCtx.resume();
+
         startSynchronizedExport();
       });
 
@@ -2617,20 +2599,11 @@
           exportSourceNode = null;
         }
 
-        if (
-          exportRecorderInstance &&
-          exportRecorderInstance.state !== "inactive"
-        ) {
-          exportRecorderInstance.onstop = null;
-          try {
-            exportRecorderInstance.stop();
-          } catch (e) {}
-          exportRecorderInstance = null;
+        if (exportVideoEncoder && exportVideoEncoder.state !== "closed") {
+          exportVideoEncoder.close();
         }
-
-        if (exportCombinedStream) {
-          exportCombinedStream.getTracks().forEach((track) => track.stop());
-          exportCombinedStream = null;
+        if (exportAudioEncoder && exportAudioEncoder.state !== "closed") {
+          exportAudioEncoder.close();
         }
 
         isPlaying = false;
@@ -2643,7 +2616,7 @@
 
         downloadIcon.style.display = "block";
         cancelExportIcon.style.display = "none";
-        recordBtn.title = "動画を書き出す";
+        recordBtn.title = "Export";
 
         playBtn.disabled = false;
         micRecordBtn.disabled = false;
@@ -2654,127 +2627,190 @@
         isExporting = true;
         controlsWrapper.classList.add("locked");
         waveformTrimContainer.classList.add("locked");
-
         progressBarContainer.style.display = "block";
         progressBarFill.style.width = "0%";
-
         downloadIcon.style.display = "none";
         cancelExportIcon.style.display = "block";
         recordBtn.title = "Cancel export";
-
         playBtn.disabled = true;
         micRecordBtn.disabled = true;
 
-        const canvasStream = canvas.captureStream(FIXED_FPS);
-        const audioDest = audioCtx.createMediaStreamDestination();
+        const duration = Math.max(0.1, trimEndSec - trimStartSec);
+        const sampleRate = 48000;
+        const totalAudioSamples = Math.ceil(duration * sampleRate);
 
-        exportSourceNode = audioCtx.createBufferSource();
-        exportSourceNode.buffer = audioBuffer;
+        const offlineAudioCtx = new OfflineAudioContext(
+          2,
+          totalAudioSamples,
+          sampleRate,
+        );
+        const offlineSource = offlineAudioCtx.createBufferSource();
+        offlineSource.buffer = audioBuffer;
 
-        const exportAnalyser = audioCtx.createAnalyser();
-        exportAnalyser.fftSize = 256;
-        exportAnalyser.smoothingTimeConstant = 0.45;
+        attachRadioEffects(
+          offlineSource,
+          offlineAudioCtx.destination,
+          offlineAudioCtx,
+        );
+        offlineSource.start(0, trimStartSec, duration);
 
-        const exportGain = audioCtx.createGain();
-        exportGain.connect(exportAnalyser);
-        exportGain.connect(audioDest);
-        exportGain.connect(audioCtx.destination);
+        const renderedAudioBuffer = await offlineAudioCtx.startRendering();
+        const ch0 = renderedAudioBuffer.getChannelData(0);
+        const ch1 =
+          renderedAudioBuffer.numberOfChannels > 1
+            ? renderedAudioBuffer.getChannelData(1)
+            : ch0;
 
-        attachRadioEffects(exportSourceNode, exportGain, audioCtx);
-
-        const combinedStream = new MediaStream([
-          ...canvasStream.getVideoTracks(),
-          ...audioDest.stream.getAudioTracks(),
-        ]);
-        exportCombinedStream = combinedStream;
-
-        const mimeType = getOptimalMp4MimeType();
-        const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-        exportRecorderInstance = new MediaRecorder(combinedStream, {
-          mimeType,
-          videoBitsPerSecond: 8000000,
+        exportMuxer = new Mp4Muxer.Muxer({
+          target: new Mp4Muxer.ArrayBufferTarget(),
+          video: { codec: "avc", width: canvas.width, height: canvas.height },
+          audio: {
+            codec: "aac",
+            sampleRate: sampleRate,
+            numberOfChannels: 2,
+          },
+          fastStart: "in-memory",
         });
 
-        const chunks = [];
-        exportRecorderInstance.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) chunks.push(e.data);
-        };
+        exportVideoEncoder = new VideoEncoder({
+          output: (chunk, meta) => exportMuxer.addVideoChunk(chunk, meta),
+          error: (e) => console.error(e),
+        });
+        exportVideoEncoder.configure({
+          codec: "avc1.42E02A",
+          width: canvas.width,
+          height: canvas.height,
+          bitrate: 8000000,
+          avc: { format: "avc" },
+        });
 
-        exportRecorderInstance.onerror = (err) => {
-          console.error("Export recorder error:", err);
-          cancelSynchronizedExport();
-          alert(
-            "Export failed. If this repeats, please clear browser cache and try again.",
+        exportAudioEncoder = new AudioEncoder({
+          output: (chunk, meta) => exportMuxer.addAudioChunk(chunk, meta),
+          error: (e) => console.error(e),
+        });
+        exportAudioEncoder.configure({
+          codec: "mp4a.40.2",
+          sampleRate: sampleRate,
+          numberOfChannels: 2,
+          bitrate: 192000,
+        });
+
+        const framesPerChunk = 1024;
+        let audioOffset = 0;
+        while (audioOffset < totalAudioSamples) {
+          if (!isExporting) return;
+          const framesToRead = Math.min(
+            framesPerChunk,
+            totalAudioSamples - audioOffset,
           );
-        };
+          const audioDataBuffer = new Float32Array(framesToRead * 2);
 
-        exportRecorderInstance.onstop = () => {
-          if (exportCombinedStream) {
-            exportCombinedStream.getTracks().forEach((track) => track.stop());
-            exportCombinedStream = null;
+          audioDataBuffer.set(
+            ch0.subarray(audioOffset, audioOffset + framesToRead),
+            0,
+          );
+          audioDataBuffer.set(
+            ch1.subarray(audioOffset, audioOffset + framesToRead),
+            framesToRead,
+          );
+
+          const timestampUs = Math.round((audioOffset / sampleRate) * 1000000);
+          const audioData = new AudioData({
+            format: "f32-planar",
+            sampleRate: sampleRate,
+            numberOfFrames: framesToRead,
+            numberOfChannels: 2,
+            timestamp: timestampUs,
+            data: audioDataBuffer,
+          });
+
+          exportAudioEncoder.encode(audioData);
+          audioData.close();
+          audioOffset += framesToRead;
+        }
+
+        const totalVideoFrames = Math.ceil(duration * FIXED_FPS);
+        let offlinePhase = 0;
+        let offlineSmoothedVol = 0;
+
+        for (let i = 0; i < totalVideoFrames; i++) {
+          if (!isExporting) return;
+
+          const t = i / FIXED_FPS;
+          const sStart = Math.max(0, Math.floor(t * sampleRate) - 256);
+          const sEnd = Math.min(totalAudioSamples, sStart + 512);
+          let sum = 0;
+          for (let s = sStart; s < sEnd; s++) {
+            sum += Math.abs(ch0[s] || 0);
           }
+          const rawVol = (sum / (sEnd - sStart || 1)) * 1.5;
+          const targetVol = Math.min(1.0, rawVol);
+          offlineSmoothedVol += (targetVol - offlineSmoothedVol) * 0.45;
+          offlinePhase += 0.035;
 
-          if (chunks.length > 0) {
-            const blob = new Blob(chunks, { type: mimeType });
-            if (blob.size > 2000) {
-              cachedVideoBlob = blob;
+          renderFrame(
+            ctx,
+            canvas.width,
+            canvas.height,
+            currentAspectRatio,
+            offlineSmoothedVol,
+            offlinePhase,
+            computedBgColor,
+            computedEffectColor,
+            videoMode === "dark",
+            currentUsername,
+            currentCaption,
+            currentLayoutStyle,
+            currentFontFamily,
+          );
 
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `voice_post_${Date.now()}.${ext}`;
-              a.click();
-              URL.revokeObjectURL(url);
-            } else {
-              alert("Export aborted: output data is empty.");
-            }
+          const timestampUs = Math.round((i / FIXED_FPS) * 1000000);
+          const frame = new VideoFrame(canvas, { timestamp: timestampUs });
+          exportVideoEncoder.encode(frame, {
+            keyFrame: i % (FIXED_FPS * 2) === 0,
+          });
+          frame.close();
+
+          progressBarFill.style.width = `${Math.min(100, Math.round(((i + 1) / totalVideoFrames) * 100))}%`;
+
+          if (exportVideoEncoder.encodeQueueSize > 5) {
+            await new Promise((r) => setTimeout(r, 10));
           }
+          if (i % 15 === 0) {
+            await new Promise((r) => requestAnimationFrame(r));
+          }
+        }
 
+        try {
+          await exportVideoEncoder.flush();
+          await exportAudioEncoder.flush();
+          exportMuxer.finalize();
+
+          const blob = new Blob([exportMuxer.target.buffer], {
+            type: "video/mp4",
+          });
+          cachedVideoBlob = blob;
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `voice_post_${Date.now()}.mp4`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error(e);
+          showToast("Export error occurred.");
+        } finally {
+          isExporting = false;
           controlsWrapper.classList.remove("locked");
           waveformTrimContainer.classList.remove("locked");
           progressBarContainer.style.display = "none";
-          isExporting = false;
-
           downloadIcon.style.display = "block";
           cancelExportIcon.style.display = "none";
-          recordBtn.title = "動画を書き出す";
-
+          recordBtn.title = "Export";
           playBtn.disabled = false;
           micRecordBtn.disabled = false;
-        };
-
-        analyser = exportAnalyser;
-        isPlaying = true;
-
-        const duration = Math.max(0.1, trimEndSec - trimStartSec);
-        const startTime = performance.now();
-
-        exportProgressInterval = setInterval(() => {
-          const elapsed = (performance.now() - startTime) / 1000;
-          const percent = Math.min(100, Math.round((elapsed / duration) * 100));
-          progressBarFill.style.width = `${percent}%`;
-        }, 100);
-
-        exportRecorderInstance.start();
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            exportSourceNode.start(0, trimStartSec, duration);
-          });
-        });
-
-        exportSourceNode.onended = () => {
-          if (exportProgressInterval) clearInterval(exportProgressInterval);
-          isPlaying = false;
-          setTimeout(() => {
-            if (
-              exportRecorderInstance &&
-              exportRecorderInstance.state !== "inactive"
-            ) {
-              exportRecorderInstance.stop();
-            }
-          }, 350);
-        };
+        }
       }
 
       document.getElementById("loadBtn").addEventListener("click", () => {
@@ -2823,7 +2859,6 @@
             padRatio + (currentSec / totalDur) * effectiveRatio;
 
           playheadLine.style.left = `${currentRatio * 100}%`;
-
           floatingDurBadge.textContent = formatPreciseTime(currentSec);
         }
 
@@ -2848,9 +2883,7 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js").catch((err) => {
-            console.error("Service Worker registration failed:", err);
-          });
+          navigator.serviceWorker.register("./sw.js").catch((err) => {});
         });
       }
     </script>
