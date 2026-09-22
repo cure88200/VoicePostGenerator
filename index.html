@@ -2189,7 +2189,9 @@
               const arrayBuffer = await micBlob.arrayBuffer();
               audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-              updateAudioStatus("mic", "Mic Recording");
+              const durText = formatPreciseTime(audioBuffer.duration);
+
+              updateAudioStatus("mic", `Take ${durText}`);
               initWaveformTrimmer(audioBuffer);
               invalidateCache();
 
