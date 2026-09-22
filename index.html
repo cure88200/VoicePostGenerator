@@ -1205,6 +1205,8 @@
       let exportAudioEncoder = null;
       let exportMuxer = null;
       let exportProgressInterval = null;
+      let exportFallbackRecorder = null;
+      let exportFallbackRafId = null;
 
       let trimStartSec = 0;
       let trimEndSec = 0;
@@ -1744,7 +1746,7 @@
             sb = 0;
           bucket.forEach((c) => {
             sr += c.r;
-            sg += c.g;
+            sg += c.r;
             sb += c.b;
           });
           return {
@@ -2190,7 +2192,6 @@
               audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
               const durText = formatPreciseTime(audioBuffer.duration);
-
               updateAudioStatus("mic", `Take ${durText}`);
               initWaveformTrimmer(audioBuffer);
               invalidateCache();
@@ -2217,6 +2218,7 @@
           recordBtn.disabled = false;
         }
       });
+
       function playAudioPreview() {
         currentSourceNode = audioCtx.createBufferSource();
         currentSourceNode.buffer = audioBuffer;
@@ -2592,6 +2594,19 @@
           exportProgressInterval = null;
         }
 
+        if (
+          exportFallbackRecorder &&
+          exportFallbackRecorder.state !== "inactive"
+        ) {
+          exportFallbackRecorder.onstop = null;
+          exportFallbackRecorder.stop();
+          exportFallbackRecorder = null;
+        }
+        if (exportFallbackRafId) {
+          cancelAnimationFrame(exportFallbackRafId);
+          exportFallbackRafId = null;
+        }
+
         if (exportSourceNode) {
           try {
             exportSourceNode.stop();
@@ -2623,7 +2638,155 @@
         invalidateCache();
       }
 
+      async function startFallbackExport() {
+        isExporting = true;
+        controlsWrapper.classList.add("locked");
+        waveformTrimContainer.classList.add("locked");
+        progressBarContainer.style.display = "block";
+        progressBarFill.style.width = "0%";
+        downloadIcon.style.display = "none";
+        cancelExportIcon.style.display = "block";
+        recordBtn.title = "Cancel export";
+        playBtn.disabled = true;
+        micRecordBtn.disabled = true;
+
+        const duration = Math.max(0.1, trimEndSec - trimStartSec);
+
+        const destNode = audioCtx.createMediaStreamDestination();
+        exportSourceNode = audioCtx.createBufferSource();
+        exportSourceNode.buffer = audioBuffer;
+
+        const exportAnalyser = audioCtx.createAnalyser();
+        exportAnalyser.fftSize = 256;
+        exportAnalyser.smoothingTimeConstant = 0.45;
+
+        const preGain = audioCtx.createGain();
+        exportSourceNode.connect(preGain);
+        exportSourceNode.connect(exportAnalyser);
+        attachRadioEffects(preGain, destNode, audioCtx);
+
+        const canvasStream = canvas.captureStream(FIXED_FPS);
+        const combinedStream = new MediaStream([
+          ...canvasStream.getVideoTracks(),
+          ...destNode.stream.getAudioTracks(),
+        ]);
+
+        const mimeType = getOptimalMp4MimeType();
+        const recorderOptions = mimeType ? { mimeType } : {};
+        exportFallbackRecorder = new MediaRecorder(
+          combinedStream,
+          recorderOptions,
+        );
+        const fallbackChunks = [];
+
+        exportFallbackRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) fallbackChunks.push(e.data);
+        };
+
+        const startCtxTime = audioCtx.currentTime;
+        let fallbackPhase = 0;
+        let fallbackSmoothedVol = 0;
+
+        function renderFallbackFrame() {
+          if (!isExporting) return;
+
+          const currentSec = audioCtx.currentTime - startCtxTime;
+          const progress = Math.min(1, currentSec / duration);
+          progressBarFill.style.width = `${Math.round(progress * 100)}%`;
+
+          const freqData = new Uint8Array(exportAnalyser.frequencyBinCount);
+          exportAnalyser.getByteFrequencyData(freqData);
+          let sum = 0;
+          for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+          const targetVol = sum / freqData.length / 255;
+          fallbackSmoothedVol += (targetVol - fallbackSmoothedVol) * 0.65;
+          fallbackPhase += 0.035;
+
+          renderFrame(
+            ctx,
+            canvas.width,
+            canvas.height,
+            currentAspectRatio,
+            fallbackSmoothedVol,
+            fallbackPhase,
+            computedBgColor,
+            computedEffectColor,
+            videoMode === "dark",
+            currentUsername,
+            currentCaption,
+            currentLayoutStyle,
+            currentFontFamily,
+          );
+
+          if (currentSec < duration) {
+            exportFallbackRafId = requestAnimationFrame(renderFallbackFrame);
+          }
+        }
+
+        exportFallbackRecorder.onstop = async () => {
+          if (exportFallbackRafId) {
+            cancelAnimationFrame(exportFallbackRafId);
+            exportFallbackRafId = null;
+          }
+          if (exportSourceNode) {
+            try {
+              exportSourceNode.stop();
+            } catch (e) {}
+            exportSourceNode = null;
+          }
+
+          if (!isExporting) return;
+
+          const actualMime = exportFallbackRecorder.mimeType || "video/mp4";
+          const ext = actualMime.includes("mp4") ? "mp4" : "webm";
+          const blob = new Blob(fallbackChunks, { type: actualMime });
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `voice_post_${Date.now()}.${ext}`;
+          a.click();
+          URL.revokeObjectURL(url);
+
+          isExporting = false;
+          controlsWrapper.classList.remove("locked");
+          waveformTrimContainer.classList.remove("locked");
+          progressBarContainer.style.display = "none";
+          downloadIcon.style.display = "block";
+          cancelExportIcon.style.display = "none";
+          recordBtn.title = "Export";
+          playBtn.disabled = false;
+          micRecordBtn.disabled = false;
+        };
+
+        exportFallbackRecorder.start();
+        exportSourceNode.start(0, trimStartSec, duration);
+        exportFallbackRafId = requestAnimationFrame(renderFallbackFrame);
+
+        setTimeout(
+          () => {
+            if (
+              isExporting &&
+              exportFallbackRecorder &&
+              exportFallbackRecorder.state !== "inactive"
+            ) {
+              exportFallbackRecorder.stop();
+            }
+          },
+          duration * 1000 + 250,
+        );
+      }
+
       async function startSynchronizedExport() {
+        const supportsWebCodecs =
+          typeof VideoEncoder !== "undefined" &&
+          typeof AudioEncoder !== "undefined";
+
+        if (!supportsWebCodecs) {
+          startFallbackExport();
+          return;
+        }
+
         isExporting = true;
         controlsWrapper.classList.add("locked");
         waveformTrimContainer.classList.add("locked");
