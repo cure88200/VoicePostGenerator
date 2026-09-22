@@ -2638,6 +2638,53 @@
         invalidateCache();
       }
 
+      async function fixMp4Duration(blob, durationSec) {
+        const buffer = await blob.arrayBuffer();
+        const view = new DataView(buffer);
+        let movieTimescale = 1000;
+
+        for (let i = 0; i < buffer.byteLength - 8; i++) {
+          const tag = String.fromCharCode(
+            view.getUint8(i),
+            view.getUint8(i + 1),
+            view.getUint8(i + 2),
+            view.getUint8(i + 3),
+          );
+
+          if (tag === "mvhd") {
+            const version = view.getUint8(i + 4);
+            if (version === 0) {
+              movieTimescale = view.getUint32(i + 16);
+              view.setUint32(i + 20, Math.round(durationSec * movieTimescale));
+            } else if (version === 1) {
+              movieTimescale = view.getUint32(i + 24);
+              view.setUint32(i + 28, 0);
+              view.setUint32(i + 32, Math.round(durationSec * movieTimescale));
+            }
+          } else if (tag === "tkhd") {
+            const version = view.getUint8(i + 4);
+            if (version === 0) {
+              view.setUint32(i + 24, Math.round(durationSec * movieTimescale));
+            } else if (version === 1) {
+              view.setUint32(i + 32, 0);
+              view.setUint32(i + 36, Math.round(durationSec * movieTimescale));
+            }
+          } else if (tag === "mdhd") {
+            const version = view.getUint8(i + 4);
+            if (version === 0) {
+              const mediaTimescale = view.getUint32(i + 16);
+              view.setUint32(i + 20, Math.round(durationSec * mediaTimescale));
+            } else if (version === 1) {
+              const mediaTimescale = view.getUint32(i + 24);
+              view.setUint32(i + 28, 0);
+              view.setUint32(i + 32, Math.round(durationSec * mediaTimescale));
+            }
+          }
+        }
+
+        return new Blob([buffer], { type: blob.type });
+      }
+
       async function startFallbackExport() {
         isExporting = true;
         controlsWrapper.classList.add("locked");
@@ -2739,7 +2786,15 @@
 
           const actualMime = exportFallbackRecorder.mimeType || "video/mp4";
           const ext = actualMime.includes("mp4") ? "mp4" : "webm";
-          const blob = new Blob(fallbackChunks, { type: actualMime });
+          let blob = new Blob(fallbackChunks, { type: actualMime });
+
+          if (ext === "mp4") {
+            blob = await fixMp4Duration(blob, duration);
+          } else if (typeof fixWebmDuration !== "undefined") {
+            blob = await new Promise((resolve) => {
+              fixWebmDuration(blob, duration * 1000, (fixed) => resolve(fixed));
+            });
+          }
 
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
