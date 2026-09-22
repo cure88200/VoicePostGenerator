@@ -1222,6 +1222,8 @@
       let previewBgChunks = [];
       let previewBgStream = null;
 
+      let micRecordStartTime = 0;
+
       const FIXED_FPS = 60;
 
       function invalidateCache() {
@@ -1797,7 +1799,6 @@
         const totalDur = audioBuffer.duration;
         const padX = 28;
         const effectiveW = w - padX * 2;
-        const isDark = videoMode === "dark";
 
         const startNorm = trimStartSec / totalDur;
         const endNorm = trimEndSec / totalDur;
@@ -1805,9 +1806,7 @@
         const centerY = h / 2;
 
         waveformCtx.save();
-        waveformCtx.strokeStyle = isDark
-          ? "rgba(255, 255, 255, 0.22)"
-          : "rgba(0, 0, 0, 0.18)";
+        waveformCtx.strokeStyle = "rgba(0, 0, 0, 0.18)";
         waveformCtx.lineWidth = 1.5;
         waveformCtx.setLineDash([3, 3]);
 
@@ -1836,9 +1835,7 @@
           if (isSelected) {
             waveformCtx.fillStyle = `rgb(${computedEffectColor.r}, ${computedEffectColor.g}, ${computedEffectColor.b})`;
           } else {
-            waveformCtx.fillStyle = isDark
-              ? "rgba(255, 255, 255, 0.18)"
-              : "rgba(0, 0, 0, 0.16)";
+            waveformCtx.fillStyle = "rgba(0, 0, 0, 0.16)";
           }
 
           waveformCtx.beginPath();
@@ -2178,10 +2175,12 @@
               if (e.data && e.data.size > 0) micChunks.push(e.data);
             };
 
+            micRecordStartTime = performance.now();
             updateAudioStatus("mic", "Recording...");
             invalidateCache();
 
             micRecorder.onstop = async () => {
+              audioNameOverlay.style.color = "";
               if (micSourceNode) {
                 micSourceNode.disconnect();
                 micSourceNode = null;
@@ -2828,6 +2827,7 @@
       }
 
       loadPreferences();
+      updateComputedColors();
       updateDynamicFavicon();
 
       let previewPhase = 0;
@@ -2847,6 +2847,35 @@
 
         smoothedVolume += (targetVolume - smoothedVolume) * 0.65;
         previewPhase += 0.035;
+
+        if (isMicRecording) {
+          const elapsed = (performance.now() - micRecordStartTime) / 1000;
+          const timeStr = formatPreciseTime(elapsed);
+
+          const meterLevel = Math.min(1.0, targetVolume * 4.8);
+          const activeCount = Math.floor(meterLevel * 12);
+
+          const offColor = "rgba(20, 20, 22, 0.22)";
+          const timeColor = "rgba(20, 20, 22, 0.85)";
+
+          const text = "Recording...";
+          const hues = [135, 120, 95, 75, 55, 46, 34, 24, 14, 4, 0, 0];
+
+          let meterHtml = "";
+          for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (i < activeCount) {
+              const hue = hues[i];
+              meterHtml += `<span style="color:hsl(${hue}, 95%, 40%);font-weight:700;">${ch}</span>`;
+            } else {
+              meterHtml += `<span style="color:${offColor};font-weight:700;">${ch}</span>`;
+            }
+          }
+
+          audioNameOverlay.innerHTML =
+            meterHtml +
+            `<span style="color:${timeColor};margin-left:6px;font-family:monospace;">${timeStr}</span>`;
+        }
 
         if (isPlaying && audioBuffer && audioCtx) {
           const totalDur = audioBuffer.duration;
