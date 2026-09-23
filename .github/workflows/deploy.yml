@@ -27,7 +27,7 @@ jobs:
         run: |
           SHA=$(echo ${{ github.sha }} | cut -c1-7)
           BUILD_DATE=$(TZ='Asia/Tokyo' date '+%Y/%m/%d %H:%M')
-          sed -i "s/__BUILD_VERSION__/${SHA} (${BUILD_DATE})/g" index.html
+          sed -i "s#__BUILD_VERSION__#${SHA} (${BUILD_DATE})#g" index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
