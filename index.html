@@ -2641,7 +2641,7 @@
       async function fixMp4Duration(blob, durationSec) {
         const buffer = await blob.arrayBuffer();
         const view = new DataView(buffer);
-        let movieTimescale = 1000;
+        let movieTimescale = 600;
 
         for (let i = 0; i < buffer.byteLength - 8; i++) {
           const tag = String.fromCharCode(
@@ -2654,12 +2654,20 @@
           if (tag === "mvhd") {
             const version = view.getUint8(i + 4);
             if (version === 0) {
-              movieTimescale = view.getUint32(i + 16);
+              movieTimescale = view.getUint32(i + 16) || 600;
               view.setUint32(i + 20, Math.round(durationSec * movieTimescale));
             } else if (version === 1) {
-              movieTimescale = view.getUint32(i + 24);
+              movieTimescale = view.getUint32(i + 24) || 600;
               view.setUint32(i + 28, 0);
               view.setUint32(i + 32, Math.round(durationSec * movieTimescale));
+            }
+          } else if (tag === "mehd") {
+            const version = view.getUint8(i + 4);
+            if (version === 0) {
+              view.setUint32(i + 8, Math.round(durationSec * movieTimescale));
+            } else if (version === 1) {
+              view.setUint32(i + 8, 0);
+              view.setUint32(i + 12, Math.round(durationSec * movieTimescale));
             }
           } else if (tag === "tkhd") {
             const version = view.getUint8(i + 4);
@@ -2672,10 +2680,10 @@
           } else if (tag === "mdhd") {
             const version = view.getUint8(i + 4);
             if (version === 0) {
-              const mediaTimescale = view.getUint32(i + 16);
+              const mediaTimescale = view.getUint32(i + 16) || movieTimescale;
               view.setUint32(i + 20, Math.round(durationSec * mediaTimescale));
             } else if (version === 1) {
-              const mediaTimescale = view.getUint32(i + 24);
+              const mediaTimescale = view.getUint32(i + 24) || movieTimescale;
               view.setUint32(i + 28, 0);
               view.setUint32(i + 32, Math.round(durationSec * mediaTimescale));
             }
@@ -2684,7 +2692,6 @@
 
         return new Blob([buffer], { type: blob.type });
       }
-
       async function startFallbackExport() {
         isExporting = true;
         controlsWrapper.classList.add("locked");
