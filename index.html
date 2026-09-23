@@ -2777,6 +2777,9 @@
         }
 
         exportFallbackRecorder.onstop = async () => {
+          if (combinedStream) {
+            combinedStream.getTracks().forEach((track) => track.stop());
+          }
           if (exportFallbackRafId) {
             cancelAnimationFrame(exportFallbackRafId);
             exportFallbackRafId = null;
@@ -2830,16 +2833,14 @@
             exportFallbackRafId = null;
           }
 
-          if (combinedStream) {
-            combinedStream.getTracks().forEach((track) => track.stop());
-          }
-
-          if (
-            exportFallbackRecorder &&
-            exportFallbackRecorder.state !== "inactive"
-          ) {
-            exportFallbackRecorder.stop();
-          }
+          setTimeout(() => {
+            if (
+              exportFallbackRecorder &&
+              exportFallbackRecorder.state !== "inactive"
+            ) {
+              exportFallbackRecorder.stop();
+            }
+          }, 120);
         }
 
         exportSourceNode.onended = () => {
@@ -2852,7 +2853,7 @@
               finishFallbackRecording();
             }
           },
-          duration * 1000 + 600,
+          duration * 1000 + 800,
         );
 
         exportFallbackRecorder.start();
