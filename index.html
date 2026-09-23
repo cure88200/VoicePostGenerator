@@ -2820,22 +2820,44 @@
           micRecordBtn.disabled = false;
         };
 
-        exportFallbackRecorder.start();
-        exportSourceNode.start(0, trimStartSec, duration);
-        exportFallbackRafId = requestAnimationFrame(renderFallbackFrame);
+        let isFallbackEnding = false;
+        function finishFallbackRecording() {
+          if (isFallbackEnding) return;
+          isFallbackEnding = true;
+
+          if (exportFallbackRafId) {
+            cancelAnimationFrame(exportFallbackRafId);
+            exportFallbackRafId = null;
+          }
+
+          if (combinedStream) {
+            combinedStream.getTracks().forEach((track) => track.stop());
+          }
+
+          if (
+            exportFallbackRecorder &&
+            exportFallbackRecorder.state !== "inactive"
+          ) {
+            exportFallbackRecorder.stop();
+          }
+        }
+
+        exportSourceNode.onended = () => {
+          finishFallbackRecording();
+        };
 
         setTimeout(
           () => {
-            if (
-              isExporting &&
-              exportFallbackRecorder &&
-              exportFallbackRecorder.state !== "inactive"
-            ) {
-              exportFallbackRecorder.stop();
+            if (isExporting && !isFallbackEnding) {
+              finishFallbackRecording();
             }
           },
-          duration * 1000 + 250,
+          duration * 1000 + 600,
         );
+
+        exportFallbackRecorder.start();
+        exportSourceNode.start(0, trimStartSec, duration);
+        exportFallbackRafId = requestAnimationFrame(renderFallbackFrame);
       }
 
       async function startSynchronizedExport() {
@@ -3135,7 +3157,6 @@
 
       previewLoop();
 
-      // 一番下にある serviceWorker.register の塊をこれに差し替え！
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           for (const registration of registrations) {
