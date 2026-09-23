@@ -1358,7 +1358,7 @@
 
           if (prefs.hasLoadedIcon) {
             if (prefs.customIconBase64) {
-              customIconBase64 = customIconBase64;
+              customIconBase64 = prefs.customIconBase64;
               iconImg.src = customIconBase64;
             } else if (prefs.username) {
               loadIcon(prefs.username);
@@ -2635,6 +2635,24 @@
         let movieTimescale = 600;
 
         for (let i = 0; i < buffer.byteLength - 8; i++) {
+          if (
+            view.getUint8(i) === 0x6d &&
+            view.getUint8(i + 1) === 0x76 &&
+            view.getUint8(i + 2) === 0x68 &&
+            view.getUint8(i + 3) === 0x64
+          ) {
+            const version = view.getUint8(i + 4);
+            movieTimescale =
+              version === 0
+                ? view.getUint32(i + 16) || 600
+                : view.getUint32(i + 24) || 600;
+            break;
+          }
+        }
+
+        const movieDurationTicks = Math.round(durationSec * movieTimescale);
+
+        for (let i = 0; i < buffer.byteLength - 8; i++) {
           const tag = String.fromCharCode(
             view.getUint8(i),
             view.getUint8(i + 1),
@@ -2645,35 +2663,26 @@
           if (tag === "mvhd") {
             const version = view.getUint8(i + 4);
             if (version === 0) {
-              movieTimescale = view.getUint32(i + 16) || 600;
-              view.setUint32(i + 20, Math.round(durationSec * movieTimescale));
+              view.setUint32(i + 20, movieDurationTicks);
             } else if (version === 1) {
-              movieTimescale = view.getUint32(i + 24) || 600;
               view.setUint32(i + 28, 0);
-              view.setUint32(i + 32, Math.round(durationSec * movieTimescale));
+              view.setUint32(i + 32, movieDurationTicks);
             }
           } else if (tag === "mehd") {
             const version = view.getUint8(i + 4);
             if (version === 0) {
-              view.setUint32(i + 8, Math.round(durationSec * movieTimescale));
+              view.setUint32(i + 8, movieDurationTicks);
             } else if (version === 1) {
               view.setUint32(i + 8, 0);
-              view.setUint32(i + 12, Math.round(durationSec * movieTimescale));
-            }
-          } else if (tag === "sidx") {
-            const version = view.getUint8(i + 4);
-            const timescale = view.getUint32(i + 8) || movieTimescale;
-            const durOffset = version === 0 ? i + 28 : i + 36;
-            if (durOffset + 4 <= buffer.byteLength) {
-              view.setUint32(durOffset, Math.round(durationSec * timescale));
+              view.setUint32(i + 12, movieDurationTicks);
             }
           } else if (tag === "tkhd") {
             const version = view.getUint8(i + 4);
             if (version === 0) {
-              view.setUint32(i + 24, Math.round(durationSec * movieTimescale));
+              view.setUint32(i + 24, movieDurationTicks);
             } else if (version === 1) {
               view.setUint32(i + 32, 0);
-              view.setUint32(i + 36, Math.round(durationSec * movieTimescale));
+              view.setUint32(i + 36, movieDurationTicks);
             }
           } else if (tag === "mdhd") {
             const version = view.getUint8(i + 4);
@@ -2685,6 +2694,32 @@
               view.setUint32(i + 28, 0);
               view.setUint32(i + 32, Math.round(durationSec * mediaTimescale));
             }
+          } else if (tag === "sidx") {
+            const version = view.getUint8(i + 4);
+            const timescale = view.getUint32(i + 12) || movieTimescale;
+            const durOffset = version === 0 ? i + 32 : i + 40;
+            if (durOffset + 4 <= buffer.byteLength) {
+              view.setUint32(durOffset, Math.round(durationSec * timescale));
+            }
+          }
+        }
+
+        let mdatStart = buffer.byteLength;
+        for (let i = 0; i < buffer.byteLength - 8; i++) {
+          if (
+            view.getUint8(i) === 0x6d &&
+            view.getUint8(i + 1) === 0x64 &&
+            view.getUint8(i + 2) === 0x61 &&
+            view.getUint8(i + 3) === 0x74
+          ) {
+            mdatStart = i - 4;
+            break;
+          }
+        }
+
+        for (let i = 0; i < mdatStart - 4; i++) {
+          if (view.getUint32(i) === 0xffffffff) {
+            view.setUint32(i, movieDurationTicks);
           }
         }
 
@@ -2777,12 +2812,12 @@
         }
 
         exportFallbackRecorder.onstop = async () => {
-          if (combinedStream) {
-            combinedStream.getTracks().forEach((track) => track.stop());
-          }
           if (exportFallbackRafId) {
             cancelAnimationFrame(exportFallbackRafId);
             exportFallbackRafId = null;
+          }
+          if (combinedStream) {
+            combinedStream.getTracks().forEach((track) => track.stop());
           }
           if (exportSourceNode) {
             try {
@@ -2828,19 +2863,14 @@
           if (isFallbackEnding) return;
           isFallbackEnding = true;
 
-          if (exportFallbackRafId) {
-            cancelAnimationFrame(exportFallbackRafId);
-            exportFallbackRafId = null;
-          }
-
-          setTimeout(() => {
+          requestAnimationFrame(() => {
             if (
               exportFallbackRecorder &&
               exportFallbackRecorder.state !== "inactive"
             ) {
               exportFallbackRecorder.stop();
             }
-          }, 120);
+          });
         }
 
         exportSourceNode.onended = () => {
