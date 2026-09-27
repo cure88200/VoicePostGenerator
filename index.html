@@ -1295,7 +1295,11 @@
           const x = startX + i * (barWidth + gap);
           const y = (32 - h) / 2;
           fCtx.beginPath();
-          fCtx.roundRect(x, y, barWidth, h, 1.8);
+          if (fCtx.roundRect) {
+            fCtx.roundRect(x, y, barWidth, h, 1.8);
+          } else {
+            fCtx.rect(x, y, barWidth, h);
+          }
           fCtx.fill();
         });
 
@@ -1831,7 +1835,11 @@
           }
 
           waveformCtx.beginPath();
-          waveformCtx.roundRect(x, y, barSlotWidth * 0.7, barHeight, 2);
+          if (waveformCtx.roundRect) {
+            waveformCtx.roundRect(x, y, barSlotWidth * 0.7, barHeight, 2);
+          } else {
+            waveformCtx.rect(x, y, barSlotWidth * 0.7, barHeight);
+          }
           waveformCtx.fill();
         }
       }
