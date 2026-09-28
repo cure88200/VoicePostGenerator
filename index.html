@@ -2712,28 +2712,8 @@
           }
         }
 
-        let mdatStart = buffer.byteLength;
-        for (let i = 0; i < buffer.byteLength - 8; i++) {
-          if (
-            view.getUint8(i) === 0x6d &&
-            view.getUint8(i + 1) === 0x64 &&
-            view.getUint8(i + 2) === 0x61 &&
-            view.getUint8(i + 3) === 0x74
-          ) {
-            mdatStart = i - 4;
-            break;
-          }
-        }
-
-        for (let i = 0; i < mdatStart - 4; i++) {
-          if (view.getUint32(i) === 0xffffffff) {
-            view.setUint32(i, movieDurationTicks);
-          }
-        }
-
         return new Blob([buffer], { type: blob.type });
       }
-
       async function startFallbackExport() {
         isExporting = true;
         controlsWrapper.classList.add("locked");
@@ -2871,14 +2851,23 @@
           if (isFallbackEnding) return;
           isFallbackEnding = true;
 
-          requestAnimationFrame(() => {
-            if (
-              exportFallbackRecorder &&
-              exportFallbackRecorder.state !== "inactive"
-            ) {
-              exportFallbackRecorder.stop();
-            }
-          });
+          if (exportFallbackRafId) {
+            cancelAnimationFrame(exportFallbackRafId);
+            exportFallbackRafId = null;
+          }
+
+          if (destNode && destNode.stream) {
+            destNode.stream
+              .getAudioTracks()
+              .forEach((t) => (t.enabled = false));
+          }
+
+          if (
+            exportFallbackRecorder &&
+            exportFallbackRecorder.state !== "inactive"
+          ) {
+            exportFallbackRecorder.stop();
+          }
         }
 
         exportSourceNode.onended = () => {
@@ -2891,7 +2880,7 @@
               finishFallbackRecording();
             }
           },
-          duration * 1000 + 800,
+          duration * 1000 + 400,
         );
 
         exportFallbackRecorder.start();
