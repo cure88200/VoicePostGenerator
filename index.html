@@ -1708,48 +1708,52 @@
 
         const data = tempCtx.getImageData(0, 0, 60, 60).data;
         let hasAlpha = false;
-        const buckets = [[], [], []];
+        const colorCandidates = [];
 
         for (let i = 0; i < data.length; i += 16) {
           const cr = data[i],
             cg = data[i + 1],
             cb = data[i + 2],
             ca = data[i + 3];
-          if (ca < 245) {
-            hasAlpha = true;
-          }
+          if (ca < 245) hasAlpha = true;
           if (ca > 140) {
-            const brightness = (cr * 299 + cg * 587 + cb * 114) / 1000;
-            if (brightness < 85) {
-              buckets[0].push({ r: cr, g: cg, b: cb });
-            } else if (brightness < 170) {
-              buckets[1].push({ r: cr, g: cg, b: cb });
-            } else {
-              buckets[2].push({ r: cr, g: cg, b: cb });
+            const [h, s, l] = rgbToHsl(cr, cg, cb);
+            if (s > 0.18 && l > 0.15 && l < 0.9) {
+              colorCandidates.push({ r: cr, g: cg, b: cb, h, s, l });
             }
           }
         }
 
         hasTransparentBackground = hasAlpha;
 
-        extractedColors = buckets.map((bucket, idx) => {
-          if (bucket.length === 0) {
-            return defaultColors[idx];
+        if (colorCandidates.length > 0) {
+          colorCandidates.sort((a, b) => b.s - a.s);
+
+          const picked = [];
+          for (const cand of colorCandidates) {
+            const isTooClose = picked.some(
+              (p) =>
+                Math.abs(p.h - cand.h) < 35 || Math.abs(p.h - cand.h) > 325,
+            );
+            if (!isTooClose) {
+              picked.push(cand);
+              if (picked.length === 3) break;
+            }
           }
-          let sr = 0,
-            sg = 0,
-            sb = 0;
-          bucket.forEach((c) => {
-            sr += c.r;
-            sg += c.r;
-            sb += c.b;
+
+          for (const cand of colorCandidates) {
+            if (picked.length >= 3) break;
+            if (!picked.includes(cand)) picked.push(cand);
+          }
+
+          extractedColors = defaultColors.map((def, idx) => {
+            return picked[idx]
+              ? { r: picked[idx].r, g: picked[idx].g, b: picked[idx].b }
+              : def;
           });
-          return {
-            r: Math.round(sr / bucket.length),
-            g: Math.round(sg / bucket.length),
-            b: Math.round(sb / bucket.length),
-          };
-        });
+        } else {
+          extractedColors = [...defaultColors];
+        }
 
         for (let i = 0; i < 3; i++) {
           const sw = document.getElementById(`swatch${i}`);
