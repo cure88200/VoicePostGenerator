@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Shippori+Mincho:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Shippori+Mincho:wght@500;700&family=Yomogi&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -59,7 +59,7 @@
       body {
         background-color: var(--md-sys-color-surface);
         color: var(--md-sys-color-on-surface);
-        font-family: "Roboto", sans-serif;
+        font-family: "Zen Kaku Gothic New", "Roboto", sans-serif;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
@@ -899,11 +899,34 @@
                   type="button"
                   class="segmented-btn active"
                   data-font="gothic"
+                  style="
+                    font-family: &quot;Zen Kaku Gothic New&quot;, sans-serif;
+                    font-weight: 500;
+                  "
                 >
                   Gothic
                 </button>
-                <button type="button" class="segmented-btn" data-font="mincho">
+                <button
+                  type="button"
+                  class="segmented-btn"
+                  data-font="mincho"
+                  style="
+                    font-family: &quot;Shippori Mincho&quot;, serif;
+                    font-weight: 500;
+                  "
+                >
                   Mincho
+                </button>
+                <button
+                  type="button"
+                  class="segmented-btn"
+                  data-font="yomogi"
+                  style="
+                    font-family: &quot;Yomogi&quot;, cursive;
+                    font-weight: 400;
+                  "
+                >
+                  Yomogi
                 </button>
               </div>
             </div>
@@ -2399,7 +2422,9 @@
         const targetFontFamily =
           fontFamilyChoice === "mincho"
             ? "'Shippori Mincho', 'Yu Mincho', 'Hiragino Mincho ProN', serif"
-            : "'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
+            : fontFamilyChoice === "yomogi"
+              ? "'Yomogi', cursive, sans-serif"
+              : "'Zen Kaku Gothic New', 'Roboto', sans-serif";
 
         const baseFontSize = Math.max(12, Math.round(minDim * 0.026));
         const urlFontSize = Math.max(10, Math.round(baseFontSize * 0.84));
