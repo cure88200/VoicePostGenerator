@@ -2660,6 +2660,8 @@
 
         const movieDurationTicks = Math.round(durationSec * movieTimescale);
 
+        // ムービー全体の総尺（mvhd と mehd）だけをピンポイント修正
+        // ブロックごとの個別目次（sidx, mdhd, tkhd）は触らないことで2倍化を完全阻止
         for (let i = 0; i < buffer.byteLength - 8; i++) {
           const tag = String.fromCharCode(
             view.getUint8(i),
@@ -2684,36 +2686,12 @@
               view.setUint32(i + 8, 0);
               view.setUint32(i + 12, movieDurationTicks);
             }
-          } else if (tag === "tkhd") {
-            const version = view.getUint8(i + 4);
-            if (version === 0) {
-              view.setUint32(i + 24, movieDurationTicks);
-            } else if (version === 1) {
-              view.setUint32(i + 32, 0);
-              view.setUint32(i + 36, movieDurationTicks);
-            }
-          } else if (tag === "mdhd") {
-            const version = view.getUint8(i + 4);
-            if (version === 0) {
-              const mediaTimescale = view.getUint32(i + 16) || movieTimescale;
-              view.setUint32(i + 20, Math.round(durationSec * mediaTimescale));
-            } else if (version === 1) {
-              const mediaTimescale = view.getUint32(i + 24) || movieTimescale;
-              view.setUint32(i + 28, 0);
-              view.setUint32(i + 32, Math.round(durationSec * mediaTimescale));
-            }
-          } else if (tag === "sidx") {
-            const version = view.getUint8(i + 4);
-            const timescale = view.getUint32(i + 12) || movieTimescale;
-            const durOffset = version === 0 ? i + 32 : i + 40;
-            if (durOffset + 4 <= buffer.byteLength) {
-              view.setUint32(durOffset, Math.round(durationSec * timescale));
-            }
           }
         }
 
         return new Blob([buffer], { type: blob.type });
       }
+
       async function startFallbackExport() {
         isExporting = true;
         controlsWrapper.classList.add("locked");
@@ -2883,7 +2861,7 @@
           duration * 1000 + 400,
         );
 
-        exportFallbackRecorder.start();
+        exportFallbackRecorder.start(500);
         exportSourceNode.start(0, trimStartSec, duration);
         exportFallbackRafId = requestAnimationFrame(renderFallbackFrame);
       }
